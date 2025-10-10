@@ -1,18 +1,18 @@
 # AutoGen 관련 패키지
-autogen-core
-autogen-agentchat
-autogen-ext[openai]
+autogen-core==0.7.5
+autogen-agentchat==0.7.5
+autogen-ext==0.7.5
 
-# LangGraph 관련 패키지
-langgraph
-langchain
-langchain-google-genai
-langchain-core
+# API 클라이언트
+notion-client==2.5.0
+tavily-python==0.7.12
 
-# 기타 유틸리티
-asyncio
-typing-extensions
+# HTTP 및 네트워크
+requests==2.32.5
+urllib3==2.5.0
 
-# 웹 검색 도구
-duckduckgo-search
-# tavily-python  # Tavily API를 사용하려면 주석 해제하세요
+# 환경 변수 관리
+python-dotenv==1.1.1
+
+# 타입 지원
+typing-extensions==4.15.0
