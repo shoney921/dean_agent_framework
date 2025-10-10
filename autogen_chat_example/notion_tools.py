@@ -9,6 +9,8 @@ import os
 from typing import Dict, List, Optional, Any
 from notion_client import Client
 from dotenv import load_dotenv
+import httpx
+import ssl
 
 # 환경 변수 로드
 load_dotenv()
@@ -17,10 +19,18 @@ load_dotenv()
 NOTION_API_KEY = os.getenv("NOTION_API_KEY")
 
 def get_notion_client() -> Client:
-    """Notion 클라이언트 인스턴스를 반환합니다."""
+    """Notion 클라이언트 인스턴스를 반환합니다. (SSL 검증 비활성화)"""
     if not NOTION_API_KEY:
         raise ValueError("NOTION_API_KEY가 설정되지 않았습니다. .env 파일을 확인하세요.")
-    return Client(auth=NOTION_API_KEY)
+    
+    # SSL 검증을 비활성화한 httpx 클라이언트 생성
+    ssl_context = ssl.create_default_context()
+    ssl_context.check_hostname = False
+    ssl_context.verify_mode = ssl.CERT_NONE
+    
+    http_client = httpx.Client(verify=False)
+    
+    return Client(auth=NOTION_API_KEY, client=http_client)
 
 
 def create_notion_page(

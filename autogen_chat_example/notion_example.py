@@ -4,6 +4,15 @@ Notion Tools 사용 예제
 이 파일은 notion_tools.py의 다양한 함수들을 사용하는 방법을 보여줍니다.
 """
 
+import urllib3
+import warnings
+
+# ============================================================================
+# 전역 SSL 검증 비활성화 설정
+# ============================================================================
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+warnings.filterwarnings('ignore', message='Unverified HTTPS request')
+
 from notion_tools import (
     create_notion_page,
     read_notion_page,
