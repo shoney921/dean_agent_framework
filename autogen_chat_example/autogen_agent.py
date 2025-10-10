@@ -16,6 +16,30 @@ from autogen_core.models import ModelInfo
 from autogen_ext.models.openai import OpenAIChatCompletionClient
 from dotenv import load_dotenv
 
+import ssl
+import urllib3
+import requests
+
+# ============================================================================
+# 전역 SSL 검증 비활성화 설정
+# ============================================================================
+# 경고: 이 코드는 전역적으로 SSL 인증서 검증을 비활성화합니다.
+# 회사 내부망과 같이 신뢰할 수 있는 환경에서만 사용하세요.
+
+# urllib3 SSL 경고 비활성화
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+# requests 라이브러리의 모든 요청에 verify=False 자동 적용
+# 프로그램 실행 중 모든 HTTP 요청에 영구 적용됨
+_original_request = requests.Session.request
+
+def _patched_request(self, *args, **kwargs):
+    """모든 requests 요청에 자동으로 verify=False를 적용"""
+    kwargs['verify'] = False
+    return _original_request(self, *args, **kwargs)
+
+requests.Session.request = _patched_request
+
 # .env 파일에서 환경 변수 로드
 load_dotenv()
 
