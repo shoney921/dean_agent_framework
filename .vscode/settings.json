@@ -1,0 +1,164 @@
+{
+  // ===== 클래식 윈도우 테마 설정 =====
+  "workbench.colorTheme": "Visual Studio Light",
+  "workbench.preferredDarkColorTheme": "Visual Studio Dark",
+  "workbench.preferredLightColorTheme": "Visual Studio Light",
+
+  // ===== 폰트 및 가독성 설정 =====
+  // "editor.fontFamily": "'Consolas', 'Courier New', 'Monaco', 'Menlo', 'Ubuntu Mono', monospace",
+  // "editor.fontSize": 14,
+  // "editor.lineHeight": 1.4,
+  // "editor.letterSpacing": 0.5,
+  // "editor.fontWeight": "400",
+
+  // ===== 에디터 가독성 향상 =====
+  "editor.renderLineHighlight": "all",
+  "editor.cursorBlinking": "solid",
+  "editor.cursorWidth": 2,
+  "editor.cursorSmoothCaretAnimation": "on",
+  "editor.bracketPairColorization.enabled": true,
+  "editor.guides.bracketPairs": "active",
+  "editor.guides.indentation": true,
+  "editor.minimap.enabled": true,
+  "editor.minimap.renderCharacters": false,
+  "editor.minimap.maxColumn": 120,
+
+  // ===== 탭 및 사이드바 설정 =====
+  "workbench.editor.showTabs": "multiple",
+  "workbench.editor.tabSizing": "shrink",
+  "workbench.sideBar.location": "left",
+  "explorer.compactFolders": false,
+  "explorer.incrementalNaming": "smart",
+
+  // ===== 클래식 윈도우 스타일 색상 커스터마이징 =====
+  "workbench.colorCustomizations": {
+    // 클래식 윈도우 그레이 톤
+    "editor.background": "#F0F0F0",
+    "editor.foreground": "#000000",
+    "editor.lineHighlightBackground": "#E8E8E8",
+    "editor.selectionBackground": "#ADD6FF",
+    "editor.inactiveSelectionBackground": "#E5EBF1",
+    "editor.findMatchBackground": "#FFFF00",
+    "editor.findMatchHighlightBackground": "#FFFF80",
+
+    // 사이드바 클래식 스타일
+    "sideBar.background": "#E1E1E1",
+    "sideBar.foreground": "#000000",
+    "sideBarTitle.background": "#C0C0C0",
+    "sideBarTitle.foreground": "#000000",
+
+    // 탭 클래식 스타일
+    "tab.activeBackground": "#FFFFFF",
+    "tab.activeForeground": "#000000",
+    "tab.inactiveBackground": "#E1E1E1",
+    "tab.inactiveForeground": "#666666",
+    "tab.border": "#C0C0C0",
+
+    // 상태바 클래식 스타일
+    "statusBar.background": "#C0C0C0",
+    "statusBar.foreground": "#000000",
+    "statusBar.debuggingBackground": "#FF8000",
+    "statusBar.debuggingForeground": "#FFFFFF",
+
+    // 액티비티바 클래식 스타일
+    "activityBar.background": "#E1E1E1",
+    "activityBar.foreground": "#000000",
+    "activityBar.activeBorder": "#000000",
+    "activityBar.inactiveForeground": "#666666",
+
+    // ===== 윈도우 특유 파란색 메뉴바 =====
+    "titleBar.activeBackground": "#000080",
+    "titleBar.activeForeground": "#FFFFFF",
+    "titleBar.inactiveBackground": "#000080",
+    "titleBar.inactiveForeground": "#CCCCCC",
+    "titleBar.border": "#000080",
+
+    // 메뉴바 스타일
+    "menubar.selectionBackground": "#000080",
+    "menubar.selectionForeground": "#FFFFFF",
+    "menu.background": "#C0C0C0",
+    "menu.foreground": "#000000",
+    "menu.selectionBackground": "#000080",
+    "menu.selectionForeground": "#FFFFFF",
+    "menu.separatorBackground": "#808080",
+
+    // 윈도우 프레임 스타일
+    "window.activeBorder": "#000080",
+    "window.inactiveBorder": "#808080",
+
+    // 헤더 스타일 (윈도우 느낌)
+    "editorGroupHeader.tabsBackground": "#C0C0C0",
+    "editorGroupHeader.tabsBorder": "#808080",
+    "tab.activeBorderTop": "#000080",
+    "tab.activeBorder": "#000080"
+  },
+
+  // ===== Python 특화 설정 =====
+  "python.defaultInterpreterPath": "./venv/bin/python",
+  "python.terminal.activateEnvironment": true,
+  "python.linting.enabled": true,
+  "python.linting.pylintEnabled": true,
+  "python.formatting.provider": "black",
+  "python.formatting.blackArgs": ["--line-length", "88"],
+
+  // ===== 파일 확장자별 설정 =====
+  "[python]": {
+    "editor.tabSize": 4,
+    "editor.insertSpaces": true,
+    "editor.detectIndentation": false,
+    "editor.rulers": [88],
+    "editor.wordWrap": "off"
+  },
+  "[json]": {
+    "editor.tabSize": 2,
+    "editor.insertSpaces": true,
+    "editor.detectIndentation": false
+  },
+
+  // ===== 가독성 향상 기타 설정 =====
+  "editor.wordWrap": "bounded",
+  "editor.wordWrapColumn": 120,
+  "editor.renderWhitespace": "boundary",
+  "editor.insertSpaces": true,
+  "editor.detectIndentation": true,
+  "editor.trimAutoWhitespace": true,
+  "editor.largeFileOptimizations": false,
+
+  // ===== 파일 탐색기 설정 =====
+  "files.exclude": {
+    "**/__pycache__": true,
+    "**/*.pyc": true,
+    "**/.DS_Store": true,
+    "**/venv": false
+  },
+  "files.associations": {
+    "*.py": "python",
+    "*.json": "json"
+  },
+
+  // ===== 터미널 설정 =====
+  // "terminal.integrated.fontFamily": "'Consolas', 'Courier New', monospace",
+  // "terminal.integrated.fontSize": 13,
+  // "terminal.integrated.cursorBlinking": true,
+  // "terminal.integrated.cursorStyle": "block",
+
+  // ===== 클래식 윈도우 느낌의 아이콘 =====
+  "workbench.iconTheme": "vs-seti",
+
+  // ===== 자동 저장 및 백업 =====
+  "files.autoSave": "afterDelay",
+  "files.autoSaveDelay": 1000,
+  "files.hotExit": "onExitAndWindowClose",
+
+  // ===== 검색 설정 =====
+  "search.exclude": {
+    "**/venv": true,
+    "**/__pycache__": true,
+    "**/*.pyc": true
+  },
+
+  // ===== 디버깅 설정 =====
+  "debug.console.fontSize": 13,
+  "debug.console.fontFamily": "'Consolas', 'Courier New', monospace",
+  "python.analysis.extraPaths": ["./blobstorage"]
+}

@@ -1,0 +1,18 @@
+# AutoGen 관련 패키지
+autogen-core
+autogen-agentchat
+autogen-ext[openai]
+
+# LangGraph 관련 패키지
+langgraph
+langchain
+langchain-google-genai
+langchain-core
+
+# 기타 유틸리티
+asyncio
+typing-extensions
+
+# 웹 검색 도구
+duckduckgo-search
+# tavily-python  # Tavily API를 사용하려면 주석 해제하세요
