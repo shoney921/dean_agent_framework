@@ -15,29 +15,21 @@ from autogen_agentchat.teams import SelectorGroupChat
 from autogen_core.models import ModelInfo
 from autogen_ext.models.openai import OpenAIChatCompletionClient
 from dotenv import load_dotenv
+from tavily import TavilyClient
 
-import ssl
 import urllib3
 import requests
 
 # ============================================================================
 # 전역 SSL 검증 비활성화 설정
 # ============================================================================
-# 경고: 이 코드는 전역적으로 SSL 인증서 검증을 비활성화합니다.
-# 회사 내부망과 같이 신뢰할 수 있는 환경에서만 사용하세요.
-
-# urllib3 SSL 경고 비활성화
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-
 # requests 라이브러리의 모든 요청에 verify=False 자동 적용
-# 프로그램 실행 중 모든 HTTP 요청에 영구 적용됨
 _original_request = requests.Session.request
-
 def _patched_request(self, *args, **kwargs):
     """모든 requests 요청에 자동으로 verify=False를 적용"""
     kwargs['verify'] = False
     return _original_request(self, *args, **kwargs)
-
 requests.Session.request = _patched_request
 
 # .env 파일에서 환경 변수 로드
@@ -91,14 +83,7 @@ def search_web_tool(query: str) -> str:
         str: 검색 결과를 포맷팅한 문자열
     """
     try:
-        from tavily import TavilyClient
-        
-        tavily_api_key = os.getenv("TAVILY_API_KEY")
-        
-        if not tavily_api_key:
-            return "❌ TAVILY_API_KEY 환경 변수가 설정되지 않았습니다. .env 파일을 확인하세요."
-        
-        tavily = TavilyClient(api_key=tavily_api_key)
+        tavily = TavilyClient(api_key=os.getenv("TAVILY_API_KEY"))
         response = tavily.search(query, max_results=MAX_SEARCH_RESULTS)
         
         if not response.get('results'):
@@ -114,8 +99,6 @@ def search_web_tool(query: str) -> str:
         
         return "\n".join(formatted_results)
         
-    except ImportError as e:
-        return f"필요한 패키지가 설치되지 않았습니다: {str(e)}\n'pip install tavily-python' 을 실행하세요."
     except Exception as e:
         return f"검색 중 오류가 발생했습니다: {str(e)}"
 
