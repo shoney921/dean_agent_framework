@@ -205,6 +205,12 @@ def read_notion_page(page_id: str) -> Dict[str, Any]:
                 text_array = block.get("quote", {}).get("rich_text", [])
                 text_content = "".join([text_obj.get("plain_text", "") for text_obj in text_array])
                 block_data["content"] = text_content
+
+            elif block_type == "callout":
+                text_array = block.get("callout", {}).get("rich_text", [])
+                text_content = "".join([text_obj.get("plain_text", "") for text_obj in text_array])
+                block_data["icon"] = block.get("callout", {}).get("icon", {}).get("emoji", "💡")
+                block_data["content"] = block_data["icon"] + " " + text_content
                 
             else:
                 # 기타 블록 타입 처리
@@ -292,7 +298,7 @@ def append_block_to_page(
     block_type: str = "paragraph"
 ) -> Dict[str, Any]:
     """
-    Notion 페이지에 새로운 블록을 추가합니다.
+    Notion 페이지에 새로운 블록을 추가합니다. (페이지 끝에 추가)
     
     Args:
         page_id (str): 페이지 ID
@@ -330,6 +336,157 @@ def append_block_to_page(
             "success": True,
             "message": f"블록이 성공적으로 추가되었습니다.",
             "block_id": response["results"][0]["id"] if response.get("results") else None
+        }
+        
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "message": f"블록 추가 중 오류가 발생했습니다: {str(e)}"
+        }
+
+
+def append_block_children(
+    block_id: str,
+    content: str,
+    block_type: str = "paragraph"
+) -> Dict[str, Any]:
+    """
+    특정 블록 아래에 자식 블록을 추가합니다.
+    
+    Args:
+        block_id (str): 부모 블록 ID (자식을 추가할 블록)
+        content (str): 추가할 내용
+        block_type (str): 블록 타입 (paragraph, heading_1, heading_2, heading_3, 
+                         bulleted_list_item, numbered_list_item, to_do, code, quote 등)
+        
+    Returns:
+        Dict: 추가 결과
+            - success (bool): 성공 여부
+            - message (str): 결과 메시지
+            - block_id (str): 생성된 블록의 ID
+            - parent_block_id (str): 부모 블록 ID
+    """
+    try:
+        notion = get_notion_client()
+        
+        # 블록 구성
+        block_data = {
+            "object": "block",
+            "type": block_type,
+            block_type: {
+                "rich_text": [
+                    {
+                        "type": "text",
+                        "text": {
+                            "content": content
+                        }
+                    }
+                ]
+            }
+        }
+        
+        # to_do 타입인 경우 checked 필드 추가
+        if block_type == "to_do":
+            block_data[block_type]["checked"] = False
+        
+        response = notion.blocks.children.append(
+            block_id=block_id,
+            children=[block_data]
+        )
+        
+        created_block_id = response["results"][0]["id"] if response.get("results") else None
+        
+        return {
+            "success": True,
+            "message": f"블록이 성공적으로 추가되었습니다.",
+            "block_id": created_block_id,
+            "parent_block_id": block_id
+        }
+        
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "message": f"블록 추가 중 오류가 발생했습니다: {str(e)}"
+        }
+
+
+def append_multiple_blocks(
+    parent_id: str,
+    blocks: List[Dict[str, str]],
+    is_page: bool = True
+) -> Dict[str, Any]:
+    """
+    페이지 또는 블록에 여러 개의 블록을 한 번에 추가합니다.
+    
+    Args:
+        parent_id (str): 부모 페이지 또는 블록 ID
+        blocks (List[Dict]): 추가할 블록들의 리스트
+            각 블록은 {"content": "내용", "type": "블록타입"} 형태
+            예: [
+                {"content": "문단 내용", "type": "paragraph"},
+                {"content": "할 일", "type": "to_do"},
+                {"content": "제목", "type": "heading_2"}
+            ]
+        is_page (bool): True이면 페이지에 추가, False이면 블록에 추가
+        
+    Returns:
+        Dict: 추가 결과
+            - success (bool): 성공 여부
+            - message (str): 결과 메시지
+            - block_ids (List[str]): 생성된 블록들의 ID 리스트
+            - count (int): 추가된 블록 개수
+    """
+    try:
+        notion = get_notion_client()
+        
+        # 블록 데이터 구성
+        children = []
+        for block_info in blocks:
+            content = block_info.get("content", "")
+            block_type = block_info.get("type", "paragraph")
+            
+            block_data = {
+                "object": "block",
+                "type": block_type,
+                block_type: {
+                    "rich_text": [
+                        {
+                            "type": "text",
+                            "text": {
+                                "content": content
+                            }
+                        }
+                    ]
+                }
+            }
+            
+            # to_do 타입인 경우 checked 필드 추가
+            if block_type == "to_do":
+                checked = block_info.get("checked", False)
+                block_data[block_type]["checked"] = checked
+            
+            # code 타입인 경우 language 필드 추가
+            if block_type == "code":
+                language = block_info.get("language", "plain text")
+                block_data[block_type]["language"] = language
+            
+            children.append(block_data)
+        
+        response = notion.blocks.children.append(
+            block_id=parent_id,
+            children=children
+        )
+        
+        block_ids = [block["id"] for block in response.get("results", [])]
+        
+        return {
+            "success": True,
+            "message": f"{len(block_ids)}개의 블록이 성공적으로 추가되었습니다.",
+            "block_ids": block_ids,
+            "count": len(block_ids),
+            "parent_id": parent_id
         }
         
     except Exception as e:

@@ -18,6 +18,8 @@ from notion_tools import (
     read_notion_page,
     update_notion_page,
     append_block_to_page,
+    append_block_children,
+    append_multiple_blocks,
     query_notion_database,
     create_database_item,
     search_notion,
@@ -321,6 +323,140 @@ def example_get_database_schema(database_id: str):
         print(f"스키마 조회 실패: {result['message']}")
 
 
+def example_append_block_children(page_id: str):
+    """
+    예제 8: 특정 블록 아래에 자식 블록 추가
+    
+    Args:
+        page_id: 페이지 ID
+    """
+    print("\n=== 예제 8: 블록 아래에 자식 블록 추가 ===")
+    
+    # 1. 먼저 페이지를 읽어서 블록 정보 가져오기
+    page_result = read_notion_page(page_id=page_id)
+    
+    if not page_result["success"]:
+        print(f"페이지 읽기 실패: {page_result['message']}")
+        return
+    
+    print(f"페이지 제목: {page_result['title']}")
+    print(f"총 {len(page_result['blocks'])}개의 블록")
+    
+    if not page_result['blocks']:
+        print("블록이 없습니다. 먼저 블록을 추가해주세요.")
+        return
+
+    # 2. to_do 타입 블록 찾기
+    todo_blocks = [block for block in page_result['blocks'] if block['type'] == 'to_do']
+    print(f"할 일 블록: {todo_blocks}")
+    if not todo_blocks:
+        print("\n할 일(to_do) 블록이 없습니다.")
+        return
+    
+    for todo_block in todo_blocks:
+    # 3. 해당 블록 아래에 자식 블록 추가
+        result = append_block_children(
+            block_id=todo_block['block_id'],
+            content="이것은 할 일 블록의 자식 블록입니다.",
+            block_type="paragraph"
+        )
+        if result["success"]:
+            print(f"\n자식 블록 추가 성공!")
+            print(f"  - 생성된 블록 ID: {result['block_id']}")
+            print(f"  - 부모 블록 ID: {result['parent_block_id']}")
+        else:
+            print(f"자식 블록 추가 실패: {result['message']}")
+
+
+def example_append_multiple_blocks(page_id: str):
+    """
+    예제 9: 여러 블록을 한 번에 추가
+    
+    Args:
+        page_id: 페이지 ID
+    """
+    print("\n=== 예제 9: 여러 블록 한 번에 추가 ===")
+    
+    # 추가할 블록들 정의
+    blocks = [
+        {"content": "제목: 작업 목록", "type": "heading_2"},
+        {"content": "첫 번째 할 일", "type": "to_do", "checked": False},
+        {"content": "두 번째 할 일", "type": "to_do", "checked": True},
+        {"content": "설명 문단입니다.", "type": "paragraph"},
+        {"content": "print('Hello, World!')", "type": "code", "language": "python"},
+        {"content": "중요한 인용문", "type": "quote"},
+        {"content": "글머리 기호 항목 1", "type": "bulleted_list_item"},
+        {"content": "글머리 기호 항목 2", "type": "bulleted_list_item"},
+    ]
+    
+    print(f"{len(blocks)}개의 블록을 추가합니다...")
+    
+    result = append_multiple_blocks(
+        parent_id=page_id,
+        blocks=blocks,
+        is_page=True
+    )
+    
+    if result["success"]:
+        print(f"\n블록 추가 성공!")
+        print(f"  - 추가된 블록 개수: {result['count']}")
+        print(f"  - 부모 ID: {result['parent_id']}")
+        print(f"\n생성된 블록 ID 목록:")
+        for i, block_id in enumerate(result['block_ids'], 1):
+            print(f"    {i}. {block_id}")
+    else:
+        print(f"블록 추가 실패: {result['message']}")
+
+
+def example_nested_blocks(page_id: str):
+    """
+    예제 10: 중첩된 블록 구조 만들기
+    
+    Args:
+        page_id: 페이지 ID
+    """
+    print("\n=== 예제 10: 중첩된 블록 구조 만들기 ===")
+    
+    # 1. 페이지에 부모 블록 추가
+    parent_result = append_block_to_page(
+        page_id=page_id,
+        content="프로젝트 계획",
+        block_type="heading_2"
+    )
+    
+    if not parent_result["success"]:
+        print(f"부모 블록 추가 실패: {parent_result['message']}")
+        return
+    
+    parent_block_id = parent_result['block_id']
+    print(f"부모 블록 생성 완료: {parent_block_id}")
+    
+    # 2. 부모 블록 아래에 여러 자식 블록 추가
+    child_blocks = [
+        {"content": "1단계: 기획", "type": "to_do", "checked": True},
+        {"content": "2단계: 개발", "type": "to_do", "checked": False},
+        {"content": "3단계: 테스트", "type": "to_do", "checked": False},
+        {"content": "4단계: 배포", "type": "to_do", "checked": False},
+    ]
+    
+    result = append_multiple_blocks(
+        parent_id=parent_block_id,
+        blocks=child_blocks,
+        is_page=False
+    )
+    
+    if result["success"]:
+        print(f"\n중첩 구조 생성 완료!")
+        print(f"  - 부모 블록: {parent_block_id}")
+        print(f"  - 자식 블록 개수: {result['count']}")
+        print(f"\n구조:")
+        print(f"  📄 프로젝트 계획 (heading_2)")
+        for i, block_id in enumerate(result['block_ids'], 1):
+            print(f"    ├─ {child_blocks[i-1]['content']} (to_do)")
+    else:
+        print(f"자식 블록 추가 실패: {result['message']}")
+
+
 def main():
     """
     메인 함수: 예제 실행
@@ -331,15 +467,16 @@ def main():
     print("=" * 50)
     
     # 주의: 아래의 ID들을 실제 Notion ID로 변경해야 합니다
+    TEST_PAGE_ID = "2893d406-af73-80c2-a3dc-ee569c7ed46e"
     
     # 예제 1: 페이지 검색 및 생성
     # example_search_and_create_page()
     
     # 예제 2: 페이지 읽기 (페이지 ID 필요)
-    example_read_page(page_id="2893d406-af73-80c2-a3dc-ee569c7ed46e")
+    example_read_page(page_id=TEST_PAGE_ID)
     
     # 예제 3: 페이지 업데이트 (페이지 ID 필요)
-    # example_update_page(page_id="your-page-id-here")
+    # example_update_page(page_id=TEST_PAGE_ID)
     
     # 예제 4: 데이터베이스 쿼리 (데이터베이스 ID 필요)
     # example_query_database(database_id="your-database-id-here")
@@ -352,6 +489,15 @@ def main():
     
     # 예제 7: 데이터베이스 스키마 조회 (데이터베이스 ID 필요)
     # example_get_database_schema(database_id="your-database-id-here")
+    
+    # 예제 8: 특정 블록 아래에 자식 블록 추가
+    example_append_block_children(page_id=TEST_PAGE_ID)
+    
+    # 예제 9: 여러 블록 한 번에 추가
+    # example_append_multiple_blocks(page_id=TEST_PAGE_ID)
+    
+    # 예제 10: 중첩된 블록 구조 만들기
+    # example_nested_blocks(page_id=TEST_PAGE_ID)
     
     print("\n" + "=" * 50)
     print("예제 실행 완료!")
