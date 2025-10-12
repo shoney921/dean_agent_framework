@@ -114,6 +114,20 @@ def read_notion_page(page_id: str) -> Dict[str, Any]:
         
     Returns:
         Dict: 페이지 정보
+            - success (bool): 성공 여부
+            - page_id (str): 페이지 ID
+            - title (str): 페이지 제목
+            - blocks (List[Dict]): 블록 정보 리스트, 각 블록은 다음 정보를 포함:
+                - index (int): 블록의 순서 (0부터 시작)
+                - type (str): 블록 타입 (paragraph, to_do, heading_1, heading_2, heading_3, 
+                             bulleted_list_item, numbered_list_item, code, quote 등)
+                - block_id (str): 블록 ID
+                - content (str): 블록의 텍스트 내용
+                - checked (bool, to_do인 경우만): 체크 여부
+                - language (str, code인 경우만): 코드 언어
+            - url (str): 페이지 URL
+            - created_time (str): 생성 시간
+            - last_edited_time (str): 마지막 수정 시간
     """
     try:
         notion = get_notion_client()
@@ -134,20 +148,76 @@ def read_notion_page(page_id: str) -> Dict[str, Any]:
                         title = title_array[0].get("plain_text", "")
                     break
         
-        # 블록 내용 추출
-        content = []
-        for block in blocks.get("results", []):
+        # 블록 내용 추출 (인덱스 정보 포함)
+        structured_blocks = []
+        
+        for index, block in enumerate(blocks.get("results", [])):
             block_type = block.get("type")
+            block_data = {
+                "index": index,
+                "type": block_type,
+                "block_id": block.get("id", "")
+            }
+            
             if block_type == "paragraph":
                 text_array = block.get("paragraph", {}).get("rich_text", [])
-                for text_obj in text_array:
-                    content.append(text_obj.get("plain_text", ""))
+                text_content = "".join([text_obj.get("plain_text", "") for text_obj in text_array])
+                block_data["content"] = text_content
+                
+            elif block_type == "to_do":
+                todo_text = block.get("to_do", {}).get("rich_text", [])
+                text_content = "".join([text_obj.get("plain_text", "") for text_obj in todo_text])
+                block_data["content"] = text_content
+                block_data["checked"] = block.get("to_do", {}).get("checked", False)
+                
+            elif block_type == "heading_1":
+                text_array = block.get("heading_1", {}).get("rich_text", [])
+                text_content = "".join([text_obj.get("plain_text", "") for text_obj in text_array])
+                block_data["content"] = text_content
+                
+            elif block_type == "heading_2":
+                text_array = block.get("heading_2", {}).get("rich_text", [])
+                text_content = "".join([text_obj.get("plain_text", "") for text_obj in text_array])
+                block_data["content"] = text_content
+                
+            elif block_type == "heading_3":
+                text_array = block.get("heading_3", {}).get("rich_text", [])
+                text_content = "".join([text_obj.get("plain_text", "") for text_obj in text_array])
+                block_data["content"] = text_content
+                
+            elif block_type == "bulleted_list_item":
+                text_array = block.get("bulleted_list_item", {}).get("rich_text", [])
+                text_content = "".join([text_obj.get("plain_text", "") for text_obj in text_array])
+                block_data["content"] = text_content
+                
+            elif block_type == "numbered_list_item":
+                text_array = block.get("numbered_list_item", {}).get("rich_text", [])
+                text_content = "".join([text_obj.get("plain_text", "") for text_obj in text_array])
+                block_data["content"] = text_content
+                
+            elif block_type == "code":
+                text_array = block.get("code", {}).get("rich_text", [])
+                text_content = "".join([text_obj.get("plain_text", "") for text_obj in text_array])
+                block_data["content"] = text_content
+                block_data["language"] = block.get("code", {}).get("language", "plain text")
+                
+            elif block_type == "quote":
+                text_array = block.get("quote", {}).get("rich_text", [])
+                text_content = "".join([text_obj.get("plain_text", "") for text_obj in text_array])
+                block_data["content"] = text_content
+                
+            else:
+                # 기타 블록 타입 처리
+                block_data["content"] = ""
+                block_data["raw_type"] = block_type
+            
+            structured_blocks.append(block_data)
         
         return {
             "success": True,
             "page_id": page["id"],
             "title": title,
-            "content": "\n".join(content),
+            "blocks": structured_blocks,
             "url": page.get("url", ""),
             "created_time": page.get("created_time", ""),
             "last_edited_time": page.get("last_edited_time", "")

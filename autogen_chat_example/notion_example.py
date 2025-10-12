@@ -32,7 +32,7 @@ def example_search_and_create_page():
     print("\n=== 예제 1: 페이지 검색 및 생성 ===")
     
     # 1. 페이지 검색
-    search_result = search_notion(query="프로젝트", filter_type="page")
+    search_result = search_notion(query="TO DO LIST", filter_type="page")
     
     if not search_result["success"]:
         print(f"검색 실패: {search_result['message']}")
@@ -85,10 +85,70 @@ def example_read_page(page_id: str):
     
     if result["success"]:
         print(f"제목: {result['title']}")
-        print(f"내용: {result['content'][:100]}...")  # 처음 100자만 출력
+        print(f"페이지 ID: {result['page_id']}")
+        print(f"URL: {result['url']}")
         print(f"생성 시간: {result['created_time']}")
         print(f"최종 수정: {result['last_edited_time']}")
-        print(f"URL: {result['url']}")
+        
+        print(f"\n총 {len(result['blocks'])}개의 블록:")
+        print("-" * 70)
+        
+        # 블록 순서대로 출력
+        for block in result['blocks']:
+            index = block['index']
+            block_type = block['type']
+            content = block.get('content', '')
+            
+            print(f"\n[{index}] {block_type.upper()}")
+            print(f"    Block ID: {block['block_id']}")
+            
+            if block_type == 'to_do':
+                # 할 일 항목
+                checked = "✓" if block.get('checked', False) else "☐"
+                print(f"    {checked} {content}")
+                
+            elif block_type == 'code':
+                # 코드 블록
+                language = block.get('language', 'plain text')
+                print(f"    언어: {language}")
+                print(f"    코드:\n{content}")
+                
+            elif block_type in ['heading_1', 'heading_2', 'heading_3']:
+                # 제목
+                print(f"    {content}")
+                
+            elif block_type == 'bulleted_list_item':
+                # 글머리 기호 목록
+                print(f"    • {content}")
+                
+            elif block_type == 'numbered_list_item':
+                # 번호 목록
+                print(f"    {index + 1}. {content}")
+                
+            elif block_type == 'quote':
+                # 인용문
+                print(f"    \"{content}\"")
+                
+            elif block_type == 'paragraph':
+                # 일반 문단
+                print(f"    {content}")
+                
+            else:
+                # 기타 블록 타입
+                print(f"    내용: {content}")
+                if 'raw_type' in block:
+                    print(f"    (지원되지 않는 타입: {block['raw_type']})")
+        
+        print("\n" + "-" * 70)
+        
+        # 할 일 항목만 별도로 요약
+        todos = [b for b in result['blocks'] if b['type'] == 'to_do']
+        if todos:
+            print(f"\n📋 할 일 목록 요약 (총 {len(todos)}개):")
+            for todo in todos:
+                checked = "✓" if todo.get('checked', False) else "☐"
+                print(f"  [{todo['index']}] {checked} {todo['content']}")
+        
     else:
         print(f"페이지 읽기 실패: {result['message']}")
 
@@ -273,10 +333,10 @@ def main():
     # 주의: 아래의 ID들을 실제 Notion ID로 변경해야 합니다
     
     # 예제 1: 페이지 검색 및 생성
-    example_search_and_create_page()
+    # example_search_and_create_page()
     
     # 예제 2: 페이지 읽기 (페이지 ID 필요)
-    # example_read_page(page_id="your-page-id-here")
+    example_read_page(page_id="2893d406-af73-80c2-a3dc-ee569c7ed46e")
     
     # 예제 3: 페이지 업데이트 (페이지 ID 필요)
     # example_update_page(page_id="your-page-id-here")
