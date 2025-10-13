@@ -12,6 +12,9 @@ import requests
 from src.ai.agents.base import create_model_client, print_model_info
 from src.ai.agents.web_search_agent import create_web_search_agent
 from src.ai.agents.data_analyst_agent import create_data_analyst_agent
+from src.ai.agents.analysis_agent import create_analysis_agent
+from src.ai.agents.summary_agent import create_summary_agent
+from src.ai.agents.insight_agent import create_insight_agent
 from src.ai.orchestrator.team import create_team, run_team_task
 from src.core.config import DEFAULT_MODEL
 
@@ -40,9 +43,11 @@ async def main() -> None:
     # 3. 에이전트 생성
     web_search_agent = create_web_search_agent(model_client)
     data_analyst_agent = create_data_analyst_agent(model_client)
+    analysis_agent = create_analysis_agent(model_client)
+    insight_agent = create_insight_agent(model_client)
     
     # 4. 팀 생성
-    team = create_team([web_search_agent, data_analyst_agent], model_client)
+    team = create_team([web_search_agent, data_analyst_agent, analysis_agent, insight_agent], model_client)
     
     # 5. 작업 실행
     # task = """2006-2007 시즌에 가장 높은 득점을 기록한 마이애미 히트 선수는 누구였고, 
