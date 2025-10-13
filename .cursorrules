@@ -1,0 +1,58 @@
+## 🔧 터미널 명령어 실행 전 가상환경 설정 가이드
+모든 터미널 명령어를 실행하기 전에 반드시 가상환경을 활성화해야 합니다.
+
+
+[Cursor Rule] 백엔드 & AI 에이전트 통합 프로젝트 구조
+이 규칙은 확장성과 유지보수성을 극대화하기 위해 API, 비즈니스 로직, 데이터, AI 컴포넌트를 명확히 분리하는 것을 목표로 합니다. 이 구조는 FastAPI, Flask 등 모든 백엔드 프레임워크와 LangGraph, AutoGen 등 다양한 AI 프레임워크에 유연하게 적용할 수 있습니다.
+
+## 📂 최종 디렉토리 구조
+Bash
+
+project_root/
+├── src/
+│   ├── api/                  # 🌐 API 계층 (라우터, 의존성)
+│   │   ├── v1/
+│   │   │   └── endpoints/
+│   │   └── deps.py
+│   │
+│   ├── services/             # 🧠 비즈니스 로직 계층
+│   │
+│   ├── core/                 # ⚙️ 핵심 설정 및 데이터 모델
+│   │   ├── config.py
+│   │   ├── models.py         # ORM 모델
+│   │   └── schemas.py        # Pydantic 스키마
+│   │
+│   ├── repositories/         # 🗄️ 데이터베이스 추상화 계층
+│   │
+│   └── ai/                   # 🤖 AI 컴포넌트 패키지
+│       ├── orchestrator/     # 🔗 에이전트 상호작용 및 흐름 제어
+│       ├── agents/           # 🧑‍💻 개별 AI 에이전트 정의
+│       └── tools/            # 🛠️ AI 에이전트용 도구 세트
+│
+├── tests/                    # 🧪 테스트 코드
+├── .env                      # 환경변수 파일
+├── main.py                   # 🚀 애플리케이션 시작점
+└── pyproject.toml            # 프로젝트 의존성 및 설정
+
+## 📜 각 디렉토리의 역할과 책임
+디렉토리	책임 (Responsibility)	설명
+src/api/	요청과 응답 처리	HTTP 요청을 받고 유효성을 검사한 후, services 계층으로 작업을 위임합니다. 비즈니스 로직을 포함하지 않습니다.
+src/services/	핵심 비즈니스 로직	API 요청을 받아 비즈니스 흐름을 제어합니다. 필요에 따라 repositories나 ai 모듈을 호출하여 결과를 조합합니다.
+src/core/	공통 모델 및 설정	프로젝트 전반에서 사용되는 데이터 구조(Pydantic, ORM)와 환경 설정(Config)을 정의합니다.
+src/repositories/	데이터 영속성	데이터베이스와의 통신(CRUD)을 추상화합니다. 서비스 계층은 SQL 쿼리를 직접 다루지 않습니다.
+src/ai/	AI 기능 총괄	모든 AI 관련 코드를 한 곳에 모아 응집도를 높입니다. 백엔드의 다른 부분과 명확히 분리됩니다.
+
+## 🤖 AI 패키지 상세 규칙
+src/ai/ 패키지 내부는 AI 에이전트의 세 가지 핵심 요소를 중심으로 구성합니다.
+1. ai/agents/ : 에이전트의 '정의'
+    - 역할: 개별 AI 에이전트의 정체성(역할, 프롬프트, 성격)을 정의합니다.
+    - 예시: coder_agent.py는 코딩 전문가로서의 시스템 메시지와 설정을 가집니다. AutoGen의 AssistantAgent나 LangGraph의 노드(Node) 함수를 이곳에 정의할 수 있습니다.
+
+2. ai/tools/ : 에이전트의 '능력'
+    - 역할: 에이전트가 외부 세계와 상호작용하기 위해 사용할 수 있는 함수(도구)들을 모아둡니다.
+    - 예시: web_search.py는 검색 API를 호출하는 함수를, file_io.py는 파일을 읽고 쓰는 함수를 포함합니다.
+
+3. ai/orchestrator/ : 에이전트의 '협업 방식'
+    - 역할: 정의된 에이전트들이 어떤 순서와 규칙으로 상호작용할지 흐름을 제어합니다.
+    - LangGraph 예시: StatefulGraph를 구성하여 에이전트 간의 상태 전이와 워크플로우를 정의합니다.
+    - AutoGen 예시: GroupChat과 GroupChatManager를 설정하여 에이전트들의 대화 방식을 정의합니다.
