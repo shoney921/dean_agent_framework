@@ -5,22 +5,13 @@
 """
 
 import asyncio
-import sys
-import os
-
-# 상위 디렉토리를 Python 경로에 추가
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from autogen_agentchat.agents import AssistantAgent
 from autogen_ext.models.openai import OpenAIChatCompletionClient
-from config import WEB_SEARCH_AGENT_SYSTEM_MESSAGE
-from tools import search_web_tool
 
-# 직접 실행과 모듈 import 모두 지원
-try:
-    from .base import create_model_client
-except ImportError:
-    from agents.base import create_model_client
+from src.core.config import WEB_SEARCH_AGENT_SYSTEM_MESSAGE
+from src.ai.tools.web_search_tool import search_web_tool
+from src.ai.agents.base import create_model_client
 
 
 def create_web_search_agent(model_client: OpenAIChatCompletionClient) -> AssistantAgent:
@@ -79,7 +70,7 @@ if __name__ == "__main__":
     이 파일을 직접 실행하여 웹 검색 에이전트를 테스트할 수 있습니다.
     
     실행 방법:
-        python -m agents.web_search_agent
+        python -m src.ai.agents.web_search_agent
     """
     # SSL 검증 비활성화 설정
     import urllib3

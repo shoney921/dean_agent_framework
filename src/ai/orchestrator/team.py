@@ -5,18 +5,14 @@
 """
 
 import asyncio
-import sys
-import os
 from typing import List
-
-# 상위 디렉토리를 Python 경로에 추가
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from autogen_agentchat.agents import AssistantAgent
 from autogen_agentchat.conditions import MaxMessageTermination, TextMentionTermination
 from autogen_agentchat.teams import SelectorGroupChat
 from autogen_ext.models.openai import OpenAIChatCompletionClient
-from config import MAX_MESSAGES
+
+from src.core.config import MAX_MESSAGES
 
 
 def create_team(
@@ -77,9 +73,10 @@ async def test_team():
     """
     팀을 독립적으로 테스트하는 함수
     """
-    from agents.base import create_model_client, print_model_info
-    from agents import create_web_search_agent, create_data_analyst_agent
-    from config import DEFAULT_MODEL
+    from src.ai.agents.base import create_model_client, print_model_info
+    from src.ai.agents.web_search_agent import create_web_search_agent
+    from src.ai.agents.data_analyst_agent import create_data_analyst_agent
+    from src.core.config import DEFAULT_MODEL
     
     print_section_header("팀 통합 테스트")
     
@@ -107,7 +104,7 @@ if __name__ == "__main__":
     이 파일을 직접 실행하여 팀 기능을 테스트할 수 있습니다.
     
     실행 방법:
-        python team.py
+        python -m src.ai.orchestrator.team
     """
     # SSL 검증 비활성화 설정
     import urllib3

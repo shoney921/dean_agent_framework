@@ -16,7 +16,8 @@ import ssl
 load_dotenv()
 
 # Notion API 클라이언트 초기화
-NOTION_API_KEY = os.getenv("NOTION_API_KEY")
+from src.core.config import NOTION_API_KEY
+
 
 def get_notion_client() -> Client:
     """Notion 클라이언트 인스턴스를 반환합니다. (SSL 검증 비활성화)"""

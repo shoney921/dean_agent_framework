@@ -9,10 +9,11 @@ import asyncio
 import urllib3
 import requests
 
-from agents.base import create_model_client, print_model_info
-from agents import create_web_search_agent, create_data_analyst_agent
-from team import create_team, run_team_task
-from config import DEFAULT_MODEL
+from src.ai.agents.base import create_model_client, print_model_info
+from src.ai.agents.web_search_agent import create_web_search_agent
+from src.ai.agents.data_analyst_agent import create_data_analyst_agent
+from src.ai.orchestrator.team import create_team, run_team_task
+from src.core.config import DEFAULT_MODEL
 
 # ============================================================================
 # 전역 SSL 검증 비활성화 설정

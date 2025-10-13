@@ -6,12 +6,8 @@
 
 from autogen_ext.models.openai import OpenAIChatCompletionClient
 from autogen_core.models import ModelInfo
-import sys
-import os
 
-# 상위 디렉토리를 Python 경로에 추가
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from config import DEFAULT_MODEL, GEMINI_API_KEY
+from src.core.config import DEFAULT_MODEL, GEMINI_API_KEY, AVAILABLE_GEMINI_MODELS
 
 
 def create_model_client(model: str = DEFAULT_MODEL, api_key: str = GEMINI_API_KEY) -> OpenAIChatCompletionClient:
@@ -45,8 +41,6 @@ def print_model_info(current_model: str = DEFAULT_MODEL) -> None:
     Args:
         current_model: 현재 사용 중인 모델 이름
     """
-    from config import AVAILABLE_GEMINI_MODELS
-    
     print("=" * 80)
     print("모델 정보 확인")
     print("=" * 80)
@@ -59,6 +53,6 @@ def print_model_info(current_model: str = DEFAULT_MODEL) -> None:
     
     print("-" * 50)
     print(f"현재 사용 중인 모델: {current_model}")
-    print("💡 다른 모델을 사용하려면 config.py에서 DEFAULT_MODEL 상수를 변경하세요.")
+    print("💡 다른 모델을 사용하려면 src/core/config.py에서 DEFAULT_MODEL 상수를 변경하세요.")
     print("=" * 80)
 
