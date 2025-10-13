@@ -24,13 +24,18 @@ def create_analysis_agent(model_client: OpenAIChatCompletionClient) -> Assistant
     Returns:
         AssistantAgent: 분석 에이전트 (도구 없음)
     """
-    return AssistantAgent(
+    agent = AssistantAgent(
         "AnalysisAgent",
         description="정보 분석 및 패턴 식별에 특화된 에이전트입니다.",
         model_client=model_client,
         # 도구 없이 순수 LLM 분석 능력 활용
         system_message=ANALYSIS_AGENT_SYSTEM_MESSAGE,
     )
+    
+    # 에이전트 활성화 로깅
+    print(f"🔬 [AnalysisAgent 활성화] 순수 LLM 분석 모드 (도구 없음)")
+    
+    return agent
 
 
 async def test_analysis_agent():
