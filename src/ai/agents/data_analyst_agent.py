@@ -24,18 +24,13 @@ def create_data_analyst_agent(model_client: OpenAIChatCompletionClient) -> Assis
     Returns:
         AssistantAgent: 데이터 분석 에이전트
     """
-    agent = AssistantAgent(
+    return AssistantAgent(
         "DataAnalystAgent",
         description="계산 및 데이터 분석을 수행하는 에이전트입니다.",
         model_client=model_client,
         tools=[percentage_change_tool],
         system_message=DATA_ANALYST_AGENT_SYSTEM_MESSAGE,
     )
-    
-    # 에이전트 활성화 로깅
-    print(f"📊 [DataAnalystAgent 활성화] 분석 도구: {len([percentage_change_tool])}개")
-    
-    return agent
 
 
 async def test_data_analyst_agent():

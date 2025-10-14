@@ -24,18 +24,13 @@ def create_web_search_agent(model_client: OpenAIChatCompletionClient) -> Assista
     Returns:
         AssistantAgent: 웹 검색 에이전트
     """
-    agent = AssistantAgent(
+    return AssistantAgent(
         "WebSearchAgent",
         description="스포츠 통계에 대한 웹 정보를 검색하는 에이전트입니다.",
         tools=[search_web_tool],
         model_client=model_client,
         system_message=WEB_SEARCH_AGENT_SYSTEM_MESSAGE,
     )
-    
-    # 에이전트 활성화 로깅
-    print(f"🔍 [WebSearchAgent 활성화] 웹 검색 도구: {len([search_web_tool])}개")
-    
-    return agent
 
 
 async def test_web_search_agent():

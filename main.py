@@ -41,22 +41,13 @@ async def main() -> None:
     print_model_info(DEFAULT_MODEL)
     
     # 3. 에이전트 생성
-    print("\n🤖 [에이전트 생성 시작]")
-    print("-" * 50)
-    
     web_search_agent = create_web_search_agent(model_client)
     data_analyst_agent = create_data_analyst_agent(model_client)
     analysis_agent = create_analysis_agent(model_client)
     insight_agent = create_insight_agent(model_client)
     
-    agents = [web_search_agent, data_analyst_agent, analysis_agent, insight_agent]
-    print(f"✅ [에이전트 생성 완료] 총 {len(agents)}개 에이전트 준비됨")
-    
     # 4. 팀 생성
-    print("\n👥 [팀 생성]")
-    print("-" * 50)
-    team = create_team(agents, model_client)
-    print(f"✅ [팀 생성 완료] {len(agents)}개 에이전트로 구성된 팀 준비됨")
+    team = create_team([web_search_agent, data_analyst_agent, analysis_agent, insight_agent], model_client)
     
     # 5. 작업 실행
     # task = """2006-2007 시즌에 가장 높은 득점을 기록한 마이애미 히트 선수는 누구였고, 

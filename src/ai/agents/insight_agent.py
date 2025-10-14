@@ -24,18 +24,13 @@ def create_insight_agent(model_client: OpenAIChatCompletionClient) -> AssistantA
     Returns:
         AssistantAgent: 인사이트 에이전트 (도구 없음)
     """
-    agent = AssistantAgent(
+    return AssistantAgent(
         "InsightAgent",
         description="비즈니스 데이터에서 전략적 인사이트를 도출하는 에이전트입니다.",
         model_client=model_client,
         # 도구 없이 순수 LLM 인사이트 도출 능력 활용
         system_message=INSIGHT_AGENT_SYSTEM_MESSAGE,
     )
-    
-    # 에이전트 활성화 로깅
-    print(f"💡 [InsightAgent 활성화] 순수 LLM 인사이트 모드 (도구 없음)")
-    
-    return agent
 
 
 async def test_insight_agent():
