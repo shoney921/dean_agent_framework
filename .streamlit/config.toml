@@ -1,0 +1,31 @@
+[server]
+# 자동 리로드 설정
+runOnSave = true
+fileWatcherType = "auto"
+# 포트 설정
+port = 8501
+# 헤드리스 모드 (개발 시에는 false로 설정 가능)
+headless = true
+
+[browser]
+# 브라우저 자동 열기 비활성화 (헤드리스 모드와 함께 사용)
+gatherUsageStats = false
+
+[logger]
+# 로그 레벨
+level = "info"
+
+[runner]
+# 빠른 리로드를 위한 설정
+fastReruns = true
+# 캐싱 설정
+magicEnabled = true
+installTracer = false
+
+[theme]
+# 기본 테마 설정
+base = "light"
+primaryColor = "#FF6B6B"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F0F2F6"
+textColor = "#262730"

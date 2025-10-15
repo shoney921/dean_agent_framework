@@ -82,6 +82,14 @@ if __name__ == "__main__":
         str(streamlit_port),
         "--server.headless",
         "true",
+        "--server.runOnSave",
+        "true",  # 파일 저장 시 자동 실행
+        "--server.fileWatcherType",
+        "auto",  # 파일 감지 방식 자동 설정
+        "--browser.gatherUsageStats",
+        "false",  # 사용 통계 수집 비활성화
+        "--logger.level",
+        "info",  # 로그 레벨 설정
     ]
 
     try:
