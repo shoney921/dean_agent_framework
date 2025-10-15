@@ -4,6 +4,11 @@ FastAPI 애플리케이션 메인 파일
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+import os
+import subprocess
+import sys
+import atexit
+from pathlib import Path
 
 from src.api.v1.api import api_router
 from src.core.db import init_db
@@ -54,10 +59,52 @@ async def health_check():
 
 if __name__ == "__main__":
     import uvicorn
+
+    # ---------------------------------------------------------------
+    # Streamlit 프론트엔드 백그라운드 실행
+    # ---------------------------------------------------------------
+    project_root = Path(__file__).resolve().parent
+    streamlit_app_path = project_root / "frontend" / "streamlit_app" / "app.py"
+
+    # 백엔드 베이스 URL을 프론트에 주입
+    api_base_url = os.getenv("API_BASE_URL", "http://localhost:8000/api/v1/agent-logs")
+    env = os.environ.copy()
+    env["API_BASE_URL"] = api_base_url
+
+    streamlit_port = os.getenv("STREAMLIT_PORT", "8501")
+    streamlit_cmd = [
+        sys.executable,
+        "-m",
+        "streamlit",
+        "run",
+        str(streamlit_app_path),
+        "--server.port",
+        str(streamlit_port),
+        "--server.headless",
+        "true",
+    ]
+
+    try:
+        streamlit_proc = subprocess.Popen(streamlit_cmd, env=env)
+    except FileNotFoundError:
+        streamlit_proc = None
+
+    def _cleanup() -> None:
+        if streamlit_proc and streamlit_proc.poll() is None:
+            try:
+                streamlit_proc.terminate()
+            except Exception:
+                pass
+
+    atexit.register(_cleanup)
+
+    # ---------------------------------------------------------------
+    # Uvicorn 백엔드 실행 (블로킹)
+    # ---------------------------------------------------------------
     uvicorn.run(
         "app:app",
-        host="0.0.0.0",
-        port=8000,
+        host=os.getenv("HOST", "0.0.0.0"),
+        port=int(os.getenv("PORT", "8000")),
         reload=True,
-        log_level="info"
+        log_level="info",
     )
