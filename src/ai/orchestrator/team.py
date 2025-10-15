@@ -13,6 +13,7 @@ from autogen_agentchat.teams import SelectorGroupChat
 from autogen_ext.models.openai import OpenAIChatCompletionClient
 
 from src.core.config import MAX_MESSAGES
+from src.repositories.agent_logs import AgentMessageRepository
 
 
 def create_team(
@@ -47,7 +48,7 @@ def print_section_header(title: str) -> None:
     print("=" * 80)
 
 
-async def run_team_task(team: SelectorGroupChat, task: str) -> None:
+async def run_team_task(team: SelectorGroupChat, task: str, run_id: int, msg_repo: AgentMessageRepository) -> None:
     """
     팀에 작업을 할당하고 결과를 스트리밍 방식으로 출력합니다.
     
@@ -65,6 +66,14 @@ async def run_team_task(team: SelectorGroupChat, task: str) -> None:
         if hasattr(message, 'source') and hasattr(message, 'content'):
             print(f"\n---------- {message.source} ----------")
             print(message.content)
+
+            msg_repo.add(
+                run_id=run_id,
+                agent_name=str(message.source),
+                role="assistant",  # 필요 시 매핑 로직 적용
+                content=str(message.content),
+                tool_name=getattr(message, "tool", None),
+            )
     
     print_section_header("작업 완료!")
 
