@@ -12,7 +12,7 @@ import requests
 from src.ai.agents.base import create_model_client, print_model_info
 from src.ai.agents.web_search_agent import create_web_search_agent
 from src.ai.agents.data_analyst_agent import create_data_analyst_agent
-from src.ai.agents.analysis_agent import create_analysis_agent
+from src.ai.agents.analysis_agent import create_analysis_agent, create_devil_advocate_analyst_agent
 from src.ai.agents.summary_agent import create_summary_agent
 from src.ai.agents.insight_agent import create_insight_agent
 from src.ai.orchestrator.team import create_team, run_team_task
@@ -53,14 +53,15 @@ async def main() -> None:
     data_analyst_agent = create_data_analyst_agent(model_client)
     analysis_agent = create_analysis_agent(model_client)
     insight_agent = create_insight_agent(model_client)
+    devil_advocate_analyst_agent = create_devil_advocate_analyst_agent(model_client)
     
     # 4. 팀 생성
-    team = create_team([web_search_agent, data_analyst_agent, analysis_agent, insight_agent], model_client)
+    team = create_team([web_search_agent, data_analyst_agent, analysis_agent, insight_agent, devil_advocate_analyst_agent], model_client)
     
     # 5. 작업 실행
     # task = """2006-2007 시즌에 가장 높은 득점을 기록한 마이애미 히트 선수는 누구였고, 
     # 그의 2007-2008 시즌과 2008-2009 시즌 간 총 리바운드 수의 퍼센트 변화는 얼마인가요?"""
-    task = "lg cns 주식 전망은 어떤지 알아봐줘"
+    task = "스테이블 코인의 필요성에 대해 알아봐줘"
     
     # 실행 기록 시작
     run = run_repo.create(team_name="SelectorGroupChat", task=task, model=DEFAULT_MODEL)

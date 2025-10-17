@@ -5,14 +5,15 @@
 """
 
 import asyncio
-from typing import List
+from typing import List, Optional
 
 from autogen_agentchat.agents import AssistantAgent
+from autogen_agentchat.messages import TextMessage
 from autogen_agentchat.conditions import MaxMessageTermination, TextMentionTermination
 from autogen_agentchat.teams import SelectorGroupChat
 from autogen_ext.models.openai import OpenAIChatCompletionClient
 
-from src.core.config import MAX_MESSAGES
+from src.core.config import MAX_MESSAGES, TEAM_RUN_TIMEOUT_SECONDS, DEVILS_ADVOCATE_PREVIEW_ROUNDS
 from src.repositories.agent_logs import AgentMessageRepository
 
 
@@ -48,7 +49,12 @@ def print_section_header(title: str) -> None:
     print("=" * 80)
 
 
-async def run_team_task(team: SelectorGroupChat, task: str, run_id: int, msg_repo: AgentMessageRepository) -> None:
+async def run_team_task(
+    team: SelectorGroupChat,
+    task: str,
+    run_id: int,
+    msg_repo: AgentMessageRepository,
+) -> None:
     """
     팀에 작업을 할당하고 결과를 스트리밍 방식으로 출력합니다.
     

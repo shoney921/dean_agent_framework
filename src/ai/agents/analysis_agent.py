@@ -10,7 +10,7 @@ import asyncio
 from autogen_agentchat.agents import AssistantAgent
 from autogen_ext.models.openai import OpenAIChatCompletionClient
 
-from src.core.config import ANALYSIS_AGENT_SYSTEM_MESSAGE
+from src.core.config import ANALYSIS_AGENT_SYSTEM_MESSAGE, DEVIL_ADVOCATE_SYSTEM_MESSAGE
 from src.ai.agents.base import create_model_client
 
 
@@ -30,6 +30,26 @@ def create_analysis_agent(model_client: OpenAIChatCompletionClient) -> Assistant
         model_client=model_client,
         # 도구 없이 순수 LLM 분석 능력 활용
         system_message=ANALYSIS_AGENT_SYSTEM_MESSAGE,
+    )
+
+def create_devil_advocate_analyst_agent(model_client: OpenAIChatCompletionClient) -> AssistantAgent:
+    """
+    악마의 대변인 모드로 분석하는 에이전트를 생성합니다.
+    
+    주어진 정보나 주장에 대해 의도적으로 반대 입장을 취하고 
+    비판적인 관점에서 분석합니다.
+    
+    Args:
+        model_client: 사용할 모델 클라이언트
+        
+    Returns:
+        AssistantAgent: 악마의 대변인 분석 에이전트 (도구 없음)
+    """
+    return AssistantAgent(
+        "DevilsAdvocateAnalyst",
+        description="악마의 대변인 관점에서 비판적 분석을 수행하는 에이전트입니다.",
+        model_client=model_client,
+        system_message=DEVIL_ADVOCATE_SYSTEM_MESSAGE,
     )
 
 
