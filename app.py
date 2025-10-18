@@ -13,13 +13,26 @@ from pathlib import Path
 from src.api.v1.api import api_router
 from src.core.db import init_db
 
-# FastAPI 애플리케이션 생성
+# 데이터베이스 초기화
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """애플리케이션 생명주기 관리"""
+    # 시작 시 실행
+    init_db()
+    yield
+    # 종료 시 실행 (필요시)
+    pass
+
+# FastAPI 애플리케이션 생성 (수정)
 app = FastAPI(
     title="Dean Framework API",
     description="AI 에이전트 시스템을 위한 백엔드 API",
     version="1.0.0",
     docs_url="/docs",
-    redoc_url="/redoc"
+    redoc_url="/redoc",
+    lifespan=lifespan
 )
 
 # CORS 미들웨어 설정
@@ -30,12 +43,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# 데이터베이스 초기화
-@app.on_event("startup")
-async def startup_event():
-    """애플리케이션 시작 시 실행"""
-    init_db()
 
 # API 라우터 등록
 app.include_router(api_router, prefix="/api/v1")
