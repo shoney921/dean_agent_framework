@@ -56,4 +56,79 @@ class AgentRunRead(BaseModel):
     }
 
 
+# Notion 관련 스키마
+class NotionPageCreate(BaseModel):
+    notion_page_id: str
+    title: str
+    url: Optional[str] = None
+    parent_page_id: Optional[str] = None
+    is_active: str = "true"
+
+
+class NotionPageUpdate(BaseModel):
+    title: Optional[str] = None
+    url: Optional[str] = None
+    parent_page_id: Optional[str] = None
+    is_active: Optional[str] = None
+    last_synced_at: Optional[datetime] = None
+
+
+class NotionPageRead(BaseModel):
+    id: int
+    notion_page_id: str
+    title: str
+    url: Optional[str] = None
+    parent_page_id: Optional[str] = None
+    is_active: str
+    created_at: datetime
+    updated_at: datetime
+    last_synced_at: Optional[datetime] = None
+
+    model_config = {
+        "from_attributes": True,
+    }
+
+
+class NotionTodoCreate(BaseModel):
+    notion_page_id: str
+    block_id: str
+    content: str
+    checked: str = "false"
+    block_index: int
+
+
+class NotionTodoUpdate(BaseModel):
+    content: Optional[str] = None
+    checked: Optional[str] = None
+    block_index: Optional[int] = None
+
+
+class NotionTodoRead(BaseModel):
+    id: int
+    notion_page_id: str
+    block_id: str
+    content: str
+    checked: str
+    block_index: int
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {
+        "from_attributes": True,
+    }
+
+
+class NotionConnectionTest(BaseModel):
+    success: bool
+    message: str
+    api_key_valid: bool
+
+
+class NotionPageListResponse(BaseModel):
+    success: bool
+    count: int
+    pages: List[dict]
+    message: Optional[str] = None
+
+
 
