@@ -1,40 +1,65 @@
 # Dean Framework
 
-AutoGen 기반 웹 검색 및 데이터 분석 에이전트 시스템
+AutoGen 기반 웹 검색, 데이터 분석 및 Notion 연동 에이전트 시스템
 
 ## 📂 프로젝트 구조
 
 ```
 dean_framework/
 ├── src/                           # 소스 코드 루트
+│   ├── api/                       # 🌐 API 계층 (라우터, 의존성)
+│   │   ├── v1/
+│   │   │   ├── endpoints/
+│   │   │   │   ├── agent_logs.py
+│   │   │   │   └── notion.py      # Notion API 엔드포인트
+│   │   │   └── api.py
+│   │   └── deps.py
+│   │
+│   ├── services/                  # 🧠 비즈니스 로직 계층
+│   │   ├── agent_log_service.py
+│   │   └── notion_service.py      # Notion 서비스
+│   │
 │   ├── core/                      # ⚙️ 핵심 설정 및 데이터 모델
-│   │   ├── __init__.py
-│   │   └── config.py             # 환경 설정 및 상수
+│   │   ├── config.py             # 환경 설정 및 상수
+│   │   ├── models.py             # ORM 모델
+│   │   └── schemas.py            # Pydantic 스키마 (Notion 포함)
+│   │
+│   ├── repositories/              # 🗄️ 데이터베이스 추상화 계층
+│   │   └── agent_logs.py
 │   │
 │   └── ai/                        # 🤖 AI 컴포넌트 패키지
-│       ├── __init__.py
 │       ├── agents/                # 🧑‍💻 개별 AI 에이전트 정의
-│       │   ├── __init__.py
-│       │   ├── base.py           # 기본 에이전트 설정
+│       │   ├── base.py
 │       │   ├── web_search_agent.py
-│       │   └── data_analyst_agent.py
+│       │   ├── data_analyst_agent.py
+│       │   ├── analysis_agent.py
+│       │   ├── insight_agent.py
+│       │   └── summary_agent.py
 │       │
 │       ├── tools/                 # 🛠️ AI 에이전트용 도구 세트
-│       │   ├── __init__.py
 │       │   ├── web_search_tool.py
 │       │   ├── data_analysis_tool.py
-│       │   └── notion_tools.py
+│       │   ├── notion_tools.py    # 기존 Notion 도구
+│       │   └── notion_client.py   # 새로운 Notion 클라이언트
 │       │
 │       └── orchestrator/          # 🔗 에이전트 상호작용 및 흐름 제어
-│           ├── __init__.py
-│           └── team.py
+│           ├── team.py
+│           ├── advanced_team.py
+│           ├── hierarchical_team.py
+│           └── team_config.py
+│
+├── frontend/                      # 🎨 프론트엔드 (Streamlit)
+│   └── streamlit_app/
+│       ├── app.py
+│       └── services/
+│           └── api.py
 │
 ├── tests/                         # 🧪 테스트 코드
-├── autogen_chat_example/         # 📦 기존 코드 백업 (레거시)
 ├── main.py                        # 🚀 애플리케이션 시작점
+├── app.py                         # FastAPI 애플리케이션
 ├── requirements.txt               # 프로젝트 의존성
+├── notion_example.py              # Notion API 사용 예시
 ├── .env                          # 환경변수 파일 (gitignore)
-├── .cursorrules                  # 커서 룰
 └── README.md                     # 프로젝트 문서
 
 ```
@@ -79,8 +104,22 @@ NOTION_API_KEY=your_notion_api_key
 
 ### 3. 애플리케이션 실행
 
+#### AutoGen 에이전트 실행
+
 ```bash
 python main.py
+```
+
+#### FastAPI 서버 실행
+
+```bash
+python app.py
+```
+
+#### Notion API 사용 예시
+
+```bash
+python notion_example.py
 ```
 
 ## 🧪 개별 컴포넌트 테스트
@@ -116,7 +155,38 @@ python -m src.ai.orchestrator.team
   - 🔍 검색 쿼리 로깅 기능 포함
 - **percentage_change_tool**: 퍼센트 변화 계산
   - 📊 계산 과정 로깅 기능 포함
-- **notion_tools**: Notion API 연동 도구들
+- **notion_tools**: Notion API 연동 도구들 (기존)
+- **notion_client**: 체계적인 Notion API 클라이언트 (신규)
+
+### Notion API 기능
+
+새로 구현된 Notion API 클라이언트는 다음과 같은 기능을 제공합니다:
+
+#### 📄 페이지 관리
+
+- **GET** `/api/v1/notion/pages/{page_id}` - 페이지 조회
+- **POST** `/api/v1/notion/pages` - 페이지 생성
+- **PUT** `/api/v1/notion/pages/{page_id}` - 페이지 업데이트
+
+#### 🗄️ 데이터베이스 관리
+
+- **GET** `/api/v1/notion/databases/{database_id}` - 데이터베이스 조회
+- **POST** `/api/v1/notion/databases/{database_id}/query` - 데이터베이스 쿼리
+- **POST** `/api/v1/notion/databases/{database_id}/items` - 데이터베이스 항목 생성
+
+#### 🔧 블록 관리
+
+- **GET** `/api/v1/notion/blocks/{block_id}` - 블록 조회
+- **POST** `/api/v1/notion/blocks` - 블록 추가
+
+#### 🔍 검색 기능
+
+- **POST** `/api/v1/notion/search` - Notion 워크스페이스 검색
+
+#### 🛠️ 유틸리티
+
+- **GET** `/api/v1/notion/health` - API 상태 확인
+- **GET** `/api/v1/notion/info` - API 정보 조회
 
 ### Orchestrator (오케스트레이터)
 
@@ -127,12 +197,14 @@ python -m src.ai.orchestrator.team
 모든 AI 도구는 실행 과정을 로깅합니다:
 
 ### 웹 검색 로그
+
 ```
 🔍 [웹 검색 시도] 검색 쿼리: 'lg cns 주식 전망'
 ✅ [검색 성공] 5개의 결과를 찾았습니다.
 ```
 
 ### 데이터 분석 로그
+
 ```
 📊 [퍼센트 변화 계산] 시작 값: 61900, 종료 값: 64600
 ✅ [계산 완료] 퍼센트 변화: 4.36%
@@ -155,6 +227,8 @@ MAX_SEARCH_RESULTS = 5              # 검색 결과 개수
 - [AutoGen Documentation](https://microsoft.github.io/autogen/)
 - [Gemini API](https://ai.google.dev/)
 - [Tavily Search API](https://tavily.com/)
+- [Notion API](https://developers.notion.com/)
+- [FastAPI Documentation](https://fastapi.tiangolo.com/)
 
 ## 🤝 기여 가이드
 
