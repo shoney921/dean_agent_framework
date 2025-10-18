@@ -16,8 +16,7 @@ import ssl
 load_dotenv()
 
 # Notion API 클라이언트 초기화
-from src.core.config import NOTION_API_KEY
-
+NOTION_API_KEY = os.getenv("NOTION_API_KEY")
 
 def get_notion_client() -> Client:
     """Notion 클라이언트 인스턴스를 반환합니다. (SSL 검증 비활성화)"""
@@ -206,12 +205,6 @@ def read_notion_page(page_id: str) -> Dict[str, Any]:
                 text_array = block.get("quote", {}).get("rich_text", [])
                 text_content = "".join([text_obj.get("plain_text", "") for text_obj in text_array])
                 block_data["content"] = text_content
-
-            elif block_type == "callout":
-                text_array = block.get("callout", {}).get("rich_text", [])
-                text_content = "".join([text_obj.get("plain_text", "") for text_obj in text_array])
-                block_data["icon"] = block.get("callout", {}).get("icon", {}).get("emoji", "💡")
-                block_data["content"] = block_data["icon"] + " " + text_content
                 
             else:
                 # 기타 블록 타입 처리
@@ -299,7 +292,7 @@ def append_block_to_page(
     block_type: str = "paragraph"
 ) -> Dict[str, Any]:
     """
-    Notion 페이지에 새로운 블록을 추가합니다. (페이지 끝에 추가)
+    Notion 페이지에 새로운 블록을 추가합니다.
     
     Args:
         page_id (str): 페이지 ID
@@ -337,157 +330,6 @@ def append_block_to_page(
             "success": True,
             "message": f"블록이 성공적으로 추가되었습니다.",
             "block_id": response["results"][0]["id"] if response.get("results") else None
-        }
-        
-    except Exception as e:
-        return {
-            "success": False,
-            "error": str(e),
-            "message": f"블록 추가 중 오류가 발생했습니다: {str(e)}"
-        }
-
-
-def append_block_children(
-    block_id: str,
-    content: str,
-    block_type: str = "paragraph"
-) -> Dict[str, Any]:
-    """
-    특정 블록 아래에 자식 블록을 추가합니다.
-    
-    Args:
-        block_id (str): 부모 블록 ID (자식을 추가할 블록)
-        content (str): 추가할 내용
-        block_type (str): 블록 타입 (paragraph, heading_1, heading_2, heading_3, 
-                         bulleted_list_item, numbered_list_item, to_do, code, quote 등)
-        
-    Returns:
-        Dict: 추가 결과
-            - success (bool): 성공 여부
-            - message (str): 결과 메시지
-            - block_id (str): 생성된 블록의 ID
-            - parent_block_id (str): 부모 블록 ID
-    """
-    try:
-        notion = get_notion_client()
-        
-        # 블록 구성
-        block_data = {
-            "object": "block",
-            "type": block_type,
-            block_type: {
-                "rich_text": [
-                    {
-                        "type": "text",
-                        "text": {
-                            "content": content
-                        }
-                    }
-                ]
-            }
-        }
-        
-        # to_do 타입인 경우 checked 필드 추가
-        if block_type == "to_do":
-            block_data[block_type]["checked"] = False
-        
-        response = notion.blocks.children.append(
-            block_id=block_id,
-            children=[block_data]
-        )
-        
-        created_block_id = response["results"][0]["id"] if response.get("results") else None
-        
-        return {
-            "success": True,
-            "message": f"블록이 성공적으로 추가되었습니다.",
-            "block_id": created_block_id,
-            "parent_block_id": block_id
-        }
-        
-    except Exception as e:
-        return {
-            "success": False,
-            "error": str(e),
-            "message": f"블록 추가 중 오류가 발생했습니다: {str(e)}"
-        }
-
-
-def append_multiple_blocks(
-    parent_id: str,
-    blocks: List[Dict[str, str]],
-    is_page: bool = True
-) -> Dict[str, Any]:
-    """
-    페이지 또는 블록에 여러 개의 블록을 한 번에 추가합니다.
-    
-    Args:
-        parent_id (str): 부모 페이지 또는 블록 ID
-        blocks (List[Dict]): 추가할 블록들의 리스트
-            각 블록은 {"content": "내용", "type": "블록타입"} 형태
-            예: [
-                {"content": "문단 내용", "type": "paragraph"},
-                {"content": "할 일", "type": "to_do"},
-                {"content": "제목", "type": "heading_2"}
-            ]
-        is_page (bool): True이면 페이지에 추가, False이면 블록에 추가
-        
-    Returns:
-        Dict: 추가 결과
-            - success (bool): 성공 여부
-            - message (str): 결과 메시지
-            - block_ids (List[str]): 생성된 블록들의 ID 리스트
-            - count (int): 추가된 블록 개수
-    """
-    try:
-        notion = get_notion_client()
-        
-        # 블록 데이터 구성
-        children = []
-        for block_info in blocks:
-            content = block_info.get("content", "")
-            block_type = block_info.get("type", "paragraph")
-            
-            block_data = {
-                "object": "block",
-                "type": block_type,
-                block_type: {
-                    "rich_text": [
-                        {
-                            "type": "text",
-                            "text": {
-                                "content": content
-                            }
-                        }
-                    ]
-                }
-            }
-            
-            # to_do 타입인 경우 checked 필드 추가
-            if block_type == "to_do":
-                checked = block_info.get("checked", False)
-                block_data[block_type]["checked"] = checked
-            
-            # code 타입인 경우 language 필드 추가
-            if block_type == "code":
-                language = block_info.get("language", "plain text")
-                block_data[block_type]["language"] = language
-            
-            children.append(block_data)
-        
-        response = notion.blocks.children.append(
-            block_id=parent_id,
-            children=children
-        )
-        
-        block_ids = [block["id"] for block in response.get("results", [])]
-        
-        return {
-            "success": True,
-            "message": f"{len(block_ids)}개의 블록이 성공적으로 추가되었습니다.",
-            "block_ids": block_ids,
-            "count": len(block_ids),
-            "parent_id": parent_id
         }
         
     except Exception as e:
@@ -744,5 +586,216 @@ def get_database_schema(database_id: str) -> Dict[str, Any]:
             "success": False,
             "error": str(e),
             "message": f"데이터베이스 스키마 조회 중 오류가 발생했습니다: {str(e)}"
+        }
+
+
+def list_notion_pages(
+    page_size: int = 100,
+    filter_type: str = "page",
+    sort_direction: str = "descending"
+) -> Dict[str, Any]:
+    """
+    Notion 워크스페이스에서 모든 페이지 목록을 가져옵니다.
+    
+    Args:
+        page_size (int): 페이지 크기 (기본값: 100)
+        filter_type (str): 필터 타입 ("page" 또는 "database", 기본값: "page")
+        sort_direction (str): 정렬 방향 ("ascending" 또는 "descending", 기본값: "descending")
+        
+    Returns:
+        Dict: 페이지 목록 정보
+            - success (bool): 성공 여부
+            - count (int): 페이지 개수
+            - pages (List[Dict]): 페이지 목록, 각 페이지는 다음 정보를 포함:
+                - page_id (str): 페이지 ID
+                - title (str): 페이지 제목
+                - url (str): 페이지 URL
+                - object (str): 객체 타입 ("page" 또는 "database")
+                - created_time (str): 생성 시간
+                - last_edited_time (str): 마지막 수정 시간
+                - archived (bool): 아카이브 여부
+                - parent_type (str): 부모 타입 ("page_id", "database_id", "workspace")
+                - parent_id (str): 부모 ID
+    """
+    try:
+        notion = get_notion_client()
+        
+        # 빈 쿼리로 모든 페이지 검색
+        search_params = {
+            "page_size": page_size,
+            "sort": {
+                "direction": sort_direction,
+                "timestamp": "last_edited_time"
+            },
+            "filter": {
+                "value": filter_type,
+                "property": "object"
+            }
+        }
+        
+        response = notion.search(**search_params)
+        
+        # 결과 파싱
+        pages = []
+        for item in response.get("results", []):
+            page_data = {
+                "page_id": item["id"],
+                "url": item.get("url", ""),
+                "object": item.get("object"),
+                "created_time": item.get("created_time", ""),
+                "last_edited_time": item.get("last_edited_time", ""),
+                "archived": item.get("archived", False)
+            }
+            
+            # 부모 정보 추출
+            parent = item.get("parent", {})
+            page_data["parent_type"] = parent.get("type", "")
+            page_data["parent_id"] = parent.get("page_id") or parent.get("database_id") or ""
+            
+            # 제목 추출
+            title = ""
+            if item.get("object") == "page":
+                # 페이지의 경우 properties에서 제목 추출
+                for prop_name, prop_value in item.get("properties", {}).items():
+                    if prop_value.get("type") == "title":
+                        title_array = prop_value.get("title", [])
+                        title = title_array[0].get("plain_text", "") if title_array else ""
+                        break
+            elif item.get("object") == "database":
+                # 데이터베이스의 경우 title 필드에서 추출
+                title_array = item.get("title", [])
+                title = title_array[0].get("plain_text", "") if title_array else ""
+            
+            page_data["title"] = title
+            pages.append(page_data)
+        
+        return {
+            "success": True,
+            "count": len(pages),
+            "pages": pages,
+            "has_more": response.get("has_more", False),
+            "next_cursor": response.get("next_cursor", "")
+        }
+        
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "message": f"페이지 목록 조회 중 오류가 발생했습니다: {str(e)}"
+        }
+
+
+def list_pages_by_parent(
+    parent_id: str,
+    parent_type: str = "page",
+    page_size: int = 100
+) -> Dict[str, Any]:
+    """
+    특정 부모 페이지나 데이터베이스 하위의 페이지 목록을 가져옵니다.
+    
+    Args:
+        parent_id (str): 부모 페이지 또는 데이터베이스 ID
+        parent_type (str): 부모 타입 ("page" 또는 "database", 기본값: "page")
+        page_size (int): 페이지 크기 (기본값: 100)
+        
+    Returns:
+        Dict: 하위 페이지 목록 정보
+            - success (bool): 성공 여부
+            - count (int): 페이지 개수
+            - pages (List[Dict]): 페이지 목록
+            - parent_info (Dict): 부모 정보
+    """
+    try:
+        notion = get_notion_client()
+        
+        if parent_type == "database":
+            # 데이터베이스의 경우 쿼리 사용
+            response = notion.databases.query(
+                database_id=parent_id,
+                page_size=page_size
+            )
+            
+            # 부모 정보 가져오기
+            parent_info = get_database_schema(parent_id)
+            
+        else:
+            # 페이지의 경우 자식 블록에서 페이지 타입만 필터링
+            response = notion.blocks.children.list(
+                block_id=parent_id,
+                page_size=page_size
+            )
+            
+            # 부모 페이지 정보 가져오기
+            parent_page = notion.pages.retrieve(page_id=parent_id)
+            parent_info = {
+                "success": True,
+                "page_id": parent_page["id"],
+                "title": "",
+                "url": parent_page.get("url", "")
+            }
+            
+            # 부모 페이지 제목 추출
+            for prop_name, prop_value in parent_page.get("properties", {}).items():
+                if prop_value.get("type") == "title":
+                    title_array = prop_value.get("title", [])
+                    parent_info["title"] = title_array[0].get("plain_text", "") if title_array else ""
+                    break
+        
+        # 결과 파싱
+        pages = []
+        for item in response.get("results", []):
+            # 페이지 타입인 경우만 포함
+            if item.get("type") == "child_page":
+                page_data = {
+                    "page_id": item["id"],
+                    "title": item.get("child_page", {}).get("title", ""),
+                    "url": "",  # child_page는 URL이 없음 default
+                    "object": "page",
+                    "created_time": item.get("created_time", ""),
+                    "last_edited_time": item.get("last_edited_time", ""),
+                    "archived": item.get("archived", False),
+                    "parent_type": parent_type,
+                    "parent_id": parent_id
+                }
+                pages.append(page_data)
+            
+            elif item.get("object") == "page":
+                # 데이터베이스 쿼리 결과인 경우
+                page_data = {
+                    "page_id": item["id"],
+                    "url": item.get("url", ""),
+                    "object": "page",
+                    "created_time": item.get("created_time", ""),
+                    "last_edited_time": item.get("last_edited_time", ""),
+                    "archived": item.get("archived", False),
+                    "parent_type": parent_type,
+                    "parent_id": parent_id
+                }
+                
+                # 제목 추출
+                title = ""
+                for prop_name, prop_value in item.get("properties", {}).items():
+                    if prop_value.get("type") == "title":
+                        title_array = prop_value.get("title", [])
+                        title = title_array[0].get("plain_text", "") if title_array else ""
+                        break
+                
+                page_data["title"] = title
+                pages.append(page_data)
+        
+        return {
+            "success": True,
+            "count": len(pages),
+            "pages": pages,
+            "parent_info": parent_info,
+            "has_more": response.get("has_more", False),
+            "next_cursor": response.get("next_cursor", "")
+        }
+        
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "message": f"하위 페이지 목록 조회 중 오류가 발생했습니다: {str(e)}"
         }
 
