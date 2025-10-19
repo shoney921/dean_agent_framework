@@ -22,19 +22,11 @@ def main():
     
     # 사이드바 네비게이션
     with st.sidebar:
-        st.title("🤖 Dean Agent Framework")
-        st.markdown("---")
-        
-        # 네비게이션 링크
-        st.markdown("### 📋 페이지")
-        st.markdown("- [🏠 홈](/)" + (" ← 현재 페이지" if st.query_params.get("page") is None else ""))
-        st.markdown("- [📊 실행 로그](/agent_logs)")
-        st.markdown("- [📝 노션 관리](/notion_management)")
-        
-        st.markdown("---")
-        
+        for _ in range(25):
+            st.text("  ")
+
         # 상태 정보 표시
-        st.markdown("### 📊 시스템 상태")
+        st.markdown("### 시스템 상태")
         
         # API 연결 상태 확인 (간단한 예시)
         try:

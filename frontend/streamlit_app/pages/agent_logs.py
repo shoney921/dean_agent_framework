@@ -23,32 +23,6 @@ def main():
         initial_sidebar_state="expanded"
     )
     
-    # 사이드바 네비게이션
-    with st.sidebar:
-        st.title("🤖 Dean Agent Framework")
-        st.markdown("---")
-        
-        # 네비게이션 링크
-        st.markdown("### 📋 페이지")
-        st.markdown("- [🏠 홈](/)")
-        st.markdown("- [📊 실행 로그](/agent_logs)" + " ← 현재 페이지")
-        st.markdown("- [📝 노션 관리](/notion_management)")
-        
-        st.markdown("---")
-        
-        # 상태 정보 표시
-        st.markdown("### 📊 시스템 상태")
-        
-        # API 연결 상태 확인 (간단한 예시)
-        try:
-            from frontend.streamlit_app.services.api import BackendAPIClient
-            client = BackendAPIClient()
-            # 간단한 API 호출로 연결 상태 확인
-            client.list_runs(limit=1)
-            st.success("✅ API 연결됨")
-        except Exception as e:
-            st.error(f"❌ API 연결 실패: {str(e)}")
-    
     st.title("📋 실행 로그 및 메시지")
     st.markdown("---")
     
