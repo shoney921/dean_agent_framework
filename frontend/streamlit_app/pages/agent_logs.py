@@ -142,7 +142,7 @@ def show_run_card(run: dict, index: int):
         if st.button(f"🔍 상세 보기", key=f"detail_btn_{run_id}"):
             # 세션 상태에 run_id 저장 후 상세 페이지로 이동
             st.session_state.selected_run_id = run_id
-            st.switch_page("pages/run_detail.py")
+            st.switch_page("pages/_run_detail.py")
         
         st.markdown("---")
 
