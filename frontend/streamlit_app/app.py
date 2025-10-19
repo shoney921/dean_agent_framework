@@ -224,8 +224,11 @@ def show_notion_management(api: BackendAPIClient) -> None:
                     page_id = page.get("page_id", page.get("id", ""))
                     page_title = page.get("title", "제목 없음")
                     page_url = page.get("url", "")
-                    
-                    # 체크박스 생성
+
+                    print("page_id", page_id)
+                    print("page_title", page_title)
+                    print("page_url", page_url)
+
                     is_selected = st.checkbox(
                         f"📄 {page_title}",
                         value=page_id in st.session_state.selected_pages,
@@ -246,144 +249,8 @@ def show_notion_management(api: BackendAPIClient) -> None:
                 st.markdown("---")
                 
                 # AI 배치 실행 섹션
-                st.subheader("🤖 AI 배치 실행")
+                st.button("🤖 AI 배치 실행", use_container_width=True)
                 
-                if selected_pages:
-                    st.info(f"선택된 페이지: {len(selected_pages)}개")
-                    
-                    col1, col2, col3 = st.columns([1, 1, 2])
-                    
-                    with col1:
-                        if st.button("📥 선택된 페이지 등록", type="primary"):
-                            success_count = 0
-                            error_count = 0
-                            
-                            progress_bar = st.progress(0)
-                            status_text = st.empty()
-                            
-                            for i, page_id in enumerate(selected_pages):
-                                try:
-                                    # 페이지 정보 찾기 (page_id 또는 id로 찾기)
-                                    page_info = next((p for p in pages if p.get("page_id", p.get("id", "")) == page_id), None)
-                                    if page_info:
-                                        result = api.register_notion_page_for_ai_batch(
-                                            notion_page_id=page_id,
-                                            title=page_info.get("title", "제목 없음"),
-                                            url=page_info.get("url"),
-                                            is_active="true"
-                                        )
-                                        if result["success"]:
-                                            success_count += 1
-                                        else:
-                                            error_count += 1
-                                    else:
-                                        error_count += 1
-                                except Exception as e:
-                                    error_count += 1
-                                    st.error(f"페이지 {page_id} 등록 실패: {str(e)}")
-                                
-                                # 진행률 업데이트
-                                progress = (i + 1) / len(selected_pages)
-                                progress_bar.progress(progress)
-                                status_text.text(f"진행률: {i + 1}/{len(selected_pages)}")
-                            
-                            if success_count > 0:
-                                st.success(f"✅ {success_count}개 페이지가 성공적으로 등록되었습니다.")
-                            if error_count > 0:
-                                st.error(f"❌ {error_count}개 페이지 등록에 실패했습니다.")
-                    
-                    with col2:
-                        if st.button("🔄 투두리스트 동기화"):
-                            success_count = 0
-                            error_count = 0
-                            
-                            progress_bar = st.progress(0)
-                            status_text = st.empty()
-                            
-                            for i, page_id in enumerate(selected_pages):
-                                try:
-                                    result = api.sync_notion_todos_to_db(page_id)
-                                    if result["success"]:
-                                        success_count += 1
-                                    else:
-                                        error_count += 1
-                                except Exception as e:
-                                    error_count += 1
-                                    st.error(f"페이지 {page_id} 동기화 실패: {str(e)}")
-                                
-                                # 진행률 업데이트
-                                progress = (i + 1) / len(selected_pages)
-                                progress_bar.progress(progress)
-                                status_text.text(f"진행률: {i + 1}/{len(selected_pages)}")
-                            
-                            if success_count > 0:
-                                st.success(f"✅ {success_count}개 페이지의 투두리스트가 동기화되었습니다.")
-                            if error_count > 0:
-                                st.error(f"❌ {error_count}개 페이지 동기화에 실패했습니다.")
-                    
-                    with col3:
-                        if st.button("🚀 AI 배치 실행", type="primary"):
-                            st.info("AI 배치 실행 기능은 추후 구현 예정입니다.")
-                            st.write("선택된 페이지들에 대해 AI 에이전트가 자동으로 작업을 수행합니다.")
-                else:
-                    st.warning("AI 배치를 실행할 페이지를 선택해주세요.")
-                    
-            else:
-                st.info("Notion 워크스페이스에 페이지가 없습니다.")
-                
-        else:
-            st.error(f"❌ 페이지 목록 조회 실패: {pages_result.get('message', '')}")
-            
-    except Exception as e:
-        st.error(f"❌ 페이지 목록 조회 중 오류가 발생했습니다: {str(e)}")
-    
-    st.markdown("---")
-    
-    # 등록된 페이지 관리
-    st.subheader("📊 등록된 페이지 관리")
-    
-    try:
-        registered_pages = api.get_registered_pages()
-        
-        if registered_pages:
-            st.success(f"✅ {len(registered_pages)}개의 등록된 페이지가 있습니다.")
-            
-            for page in registered_pages:
-                with st.expander(f"📄 {page['title']} ({'활성' if page['is_active'] == 'true' else '비활성'})"):
-                    col1, col2 = st.columns([3, 1])
-                    
-                    with col1:
-                        st.write(f"**페이지 ID:** {page['notion_page_id']}")
-                        if page.get('url'):
-                            st.write(f"**URL:** {page['url']}")
-                        st.write(f"**등록일:** {page.get('created_at', 'N/A')}")
-                        st.write(f"**마지막 동기화:** {page.get('last_synced_at', 'N/A')}")
-                    
-                    with col2:
-                        if page['is_active'] == 'true':
-                            if st.button("비활성화", key=f"deactivate_{page['id']}"):
-                                try:
-                                    result = api.update_page_active_status(page['notion_page_id'], "false")
-                                    if result["success"]:
-                                        st.success("페이지가 비활성화되었습니다.")
-                                        st.rerun()
-                                    else:
-                                        st.error(f"비활성화 실패: {result['message']}")
-                                except Exception as e:
-                                    st.error(f"비활성화 오류: {str(e)}")
-                        else:
-                            if st.button("활성화", key=f"activate_{page['id']}"):
-                                try:
-                                    result = api.update_page_active_status(page['notion_page_id'], "true")
-                                    if result["success"]:
-                                        st.success("페이지가 활성화되었습니다.")
-                                        st.rerun()
-                                    else:
-                                        st.error(f"활성화 실패: {result['message']}")
-                                except Exception as e:
-                                    st.error(f"활성화 오류: {str(e)}")
-        else:
-            st.info("등록된 페이지가 없습니다.")
             
     except Exception as e:
         st.error(f"등록된 페이지 조회 중 오류가 발생했습니다: {str(e)}")
