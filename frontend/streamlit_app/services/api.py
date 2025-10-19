@@ -44,7 +44,14 @@ class BackendAPIClient:
         return resp.json()
 
     # --------------------------- Messages ---------------------------------
-    def list_messages_by_run(self, run_id: int) -> List[Dict[str, Any]]:
+    def list_messages_by_run(self, run_id: int | str) -> List[Dict[str, Any]]:
+        # run_id를 정수로 변환
+        if isinstance(run_id, str):
+            try:
+                run_id = int(run_id)
+            except ValueError:
+                raise ValueError(f"Invalid run_id format: {run_id}")
+        
         resp = self.session.get(f"{self.base_url}/runs/{run_id}/messages", timeout=15)
         resp.raise_for_status()
         return resp.json()
