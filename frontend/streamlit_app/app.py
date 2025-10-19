@@ -1,69 +1,53 @@
-"""
-Agent Framework Streamlit 메인 애플리케이션
-"""
-
 import streamlit as st
-from services.api import BackendAPIClient
-from pages.dashboard import show_dashboard
-from pages.agent_logs import show_agent_logs
-from pages.notion_management import show_notion_management
+import sys
+import os
+
+# 프로젝트 루트 경로를 sys.path에 추가
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+sys.path.append(project_root)
+
+from frontend.streamlit_app.pages import home
 
 
-def init_state() -> None:
-    """세션 상태를 초기화합니다."""
-    if "current_page" not in st.session_state:
-        st.session_state.current_page = "dashboard"
-    if "selected_run_id" not in st.session_state:
-        st.session_state.selected_run_id = None
-    if "selected_pages" not in st.session_state:
-        st.session_state.selected_pages = []
-
-
-def main() -> None:
-    """메인 애플리케이션 함수"""
-    st.set_page_config(page_title="Agent Framework Dashboard", layout="wide")
-
-    init_state()
-    api = BackendAPIClient()
-
-    # 사이드바 네비게이션
-    st.sidebar.title("Menu")
+def main():
+    """스트림릿 메인 애플리케이션 (홈페이지)"""
     
-    # 페이지 선택 라디오 버튼
-    page_options = ["🏠 대시보드", "📝 Agent 로그", "📋 Notion 관리"]
-    current_display = st.session_state.get("current_page_display", "🏠 대시보드")
-    
-    try:
-        current_index = page_options.index(current_display)
-    except ValueError:
-        current_index = 0
-        current_display = page_options[0]
-    
-    page = st.sidebar.radio(
-        "페이지 선택",
-        page_options,
-        index=current_index,
-        label_visibility="collapsed"
+    # 페이지 설정
+    st.set_page_config(
+        page_title="Dean Agent Framework",
+        page_icon="🤖",
+        layout="wide",
+        initial_sidebar_state="expanded"
     )
     
-    # 페이지 상태 업데이트
-    if page != current_display:
-        if page == "🏠 대시보드":
-            st.session_state.current_page = "dashboard"
-        elif page == "📝 Agent 로그":
-            st.session_state.current_page = "agent_logs"
-        elif page == "📋 Notion 관리":
-            st.session_state.current_page = "notion_management"
-        st.session_state.current_page_display = page
-        st.rerun()
+    # 사이드바 네비게이션
+    with st.sidebar:
+        st.title("🤖 Dean Agent Framework")
+        st.markdown("---")
+        
+        # 네비게이션 링크
+        st.markdown("### 📋 페이지")
+        st.markdown("- [🏠 홈](/)" + (" ← 현재 페이지" if st.query_params.get("page") is None else ""))
+        st.markdown("- [📊 실행 로그](/agent_logs)")
+        st.markdown("- [📝 노션 관리](/notion_management)")
+        
+        st.markdown("---")
+        
+        # 상태 정보 표시
+        st.markdown("### 📊 시스템 상태")
+        
+        # API 연결 상태 확인 (간단한 예시)
+        try:
+            from frontend.streamlit_app.services.api import BackendAPIClient
+            client = BackendAPIClient()
+            # 간단한 API 호출로 연결 상태 확인
+            client.list_runs(limit=1)
+            st.success("✅ API 연결됨")
+        except Exception as e:
+            st.error(f"❌ API 연결 실패: {str(e)}")
     
-    # 페이지별 라우팅
-    if st.session_state.current_page == "dashboard":
-        show_dashboard(api)
-    elif st.session_state.current_page == "agent_logs":
-        show_agent_logs(api)
-    elif st.session_state.current_page == "notion_management":
-        show_notion_management(api)
+    # 홈페이지 표시
+    home.show()
 
 
 if __name__ == "__main__":

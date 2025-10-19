@@ -1,156 +1,291 @@
-"""
-Agent 로그 페이지 모듈
-"""
-
-from typing import Any, Dict, List, Optional
 import streamlit as st
-from services.api import BackendAPIClient
+import pandas as pd
+from datetime import datetime, timedelta
+import json
+import sys
+import os
+
+# 프로젝트 루트 경로를 sys.path에 추가
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+sys.path.append(project_root)
+
+from frontend.streamlit_app.services.api import BackendAPIClient
 
 
-def format_run_title(run: Dict[str, Any]) -> str:
-    team = run.get("team_name") or "UnknownTeam"
-    task = (run.get("task") or "").strip()
-    status = run.get("status") or "unknown"
-    run_id = run.get("id")
-    return f"#{run_id} [{team}] {task[:40]}{'...' if len(task) > 40 else ''} ({status})"
-
-
-def show_agent_logs(api: BackendAPIClient) -> None:
-    """Agent 로그 페이지를 표시합니다."""
-    st.title("📝 Agent 실행 로그")
+def main():
+    """실행 로그 및 메시지 페이지"""
     
-    # 쿼리 파라미터에서 run_id를 읽어 채팅방처럼 진입/이탈 상태를 제어
-    query_params = {}
+    # 페이지 설정
+    st.set_page_config(
+        page_title="실행 로그 - Dean Agent Framework",
+        page_icon="📋",
+        layout="wide",
+        initial_sidebar_state="expanded"
+    )
+    
+    # 사이드바 네비게이션
+    with st.sidebar:
+        st.title("🤖 Dean Agent Framework")
+        st.markdown("---")
+        
+        # 네비게이션 링크
+        st.markdown("### 📋 페이지")
+        st.markdown("- [🏠 홈](/)")
+        st.markdown("- [📊 실행 로그](/agent_logs)" + " ← 현재 페이지")
+        st.markdown("- [📝 노션 관리](/notion_management)")
+        
+        st.markdown("---")
+        
+        # 상태 정보 표시
+        st.markdown("### 📊 시스템 상태")
+        
+        # API 연결 상태 확인 (간단한 예시)
+        try:
+            from frontend.streamlit_app.services.api import BackendAPIClient
+            client = BackendAPIClient()
+            # 간단한 API 호출로 연결 상태 확인
+            client.list_runs(limit=1)
+            st.success("✅ API 연결됨")
+        except Exception as e:
+            st.error(f"❌ API 연결 실패: {str(e)}")
+    
+    st.title("📋 실행 로그 및 메시지")
+    st.markdown("---")
+    
+    # API 클라이언트 초기화
     try:
-        # Streamlit 최신 API
-        query_params = dict(st.query_params)
-    except Exception:  # noqa: BLE001
-        # 구버전 호환
-        query_params = st.experimental_get_query_params()  # type: ignore[attr-defined]
-
-    selected_from_query: Optional[int] = None
-    if query_params.get("run_id"):
-        try:
-            # run_id=["123"] 형태 또는 "123"
-            raw = query_params["run_id"]
-            selected_from_query = int(raw[0] if isinstance(raw, list) else raw)
-        except Exception:  # noqa: BLE001
-            selected_from_query = None
-
-    # 사이드바: 필터는 목록 화면에서만 표시
-    team_filter: Optional[str] = None
-    limit: int = 50
-    if not selected_from_query:
-        st.header("필터")
-        team_filter = st.text_input("팀 이름", value="")
-        limit = st.slider("최대 개수", min_value=10, max_value=200, value=50, step=10)
-
-    def navigate_to_run(run_id: int) -> None:
-        """URL 쿼리파라미터에 run_id를 설정하고 리렌더링."""
-        try:
-            st.query_params["run_id"] = str(run_id)
-        except Exception:  # noqa: BLE001
-            st.experimental_set_query_params(run_id=str(run_id))  # type: ignore[attr-defined]
-        st.rerun()
-
-    def clear_run_and_go_back() -> None:
-        """쿼리파라미터에서 run_id 제거하고 목록으로 복귀."""
-        try:
-            current = dict(st.query_params)
-            current.pop("run_id", None)
-            st.query_params.clear()
-            for k, v in current.items():
-                st.query_params[k] = v
-        except Exception:  # noqa: BLE001
-            st.experimental_set_query_params()  # type: ignore[attr-defined]
-        st.rerun()
-
-    # 1) 목록 화면 (채팅방 리스트처럼)
-    if not selected_from_query:
-        st.subheader("실행 목록")
-        try:
-            runs: List[Dict[str, Any]] = api.list_runs(team_name=team_filter or None, limit=limit)
-        except Exception as e:  # noqa: BLE001
-            st.error(f"실행 목록을 불러오지 못했습니다: {e}")
-            runs = []
-
+        client = BackendAPIClient()
+    except Exception as e:
+        st.error(f"API 클라이언트 초기화 실패: {str(e)}")
+        return
+    
+    # 필터 옵션
+    col1, col2, col3 = st.columns([2, 2, 1])
+    
+    with col1:
+        team_filter = st.selectbox(
+            "팀 필터",
+            ["전체"] + get_team_list(client),
+            index=0
+        )
+    
+    with col2:
+        status_filter = st.selectbox(
+            "상태 필터",
+            ["전체", "running", "completed", "failed"],
+            index=0
+        )
+    
+    with col3:
+        limit = st.number_input("조회 개수", min_value=10, max_value=1000, value=50)
+    
+    # 실행 목록 조회
+    try:
+        # 필터 파라미터 설정
+        params = {"limit": limit}
+        if team_filter != "전체":
+            params["team_name"] = team_filter
+        
+        runs = client.list_runs(**params)
+        
         if not runs:
             st.info("실행 기록이 없습니다.")
             return
+        
+        # 상태 필터 적용
+        if status_filter != "전체":
+            runs = [run for run in runs if run.get('status') == status_filter]
+        
+        if not runs:
+            st.info(f"'{status_filter}' 상태의 실행 기록이 없습니다.")
+            return
+        
+        # 실행 목록 표시
+        st.subheader(f"📊 실행 목록 ({len(runs)}개)")
+        
+        # 데이터프레임으로 변환
+        df = pd.DataFrame(runs)
+        
+        # 컬럼 선택 및 표시
+        display_columns = ['id', 'team_name', 'task', 'status', 'model', 'started_at', 'ended_at']
+        available_columns = [col for col in display_columns if col in df.columns]
+        
+        # 실행 기록 테이블
+        selected_runs = st.dataframe(
+            df[available_columns],
+            use_container_width=True,
+            hide_index=True,
+            selection_mode="single-row"
+        )
+        
+        # 선택된 실행의 상세 정보 표시
+        if selected_runs.selection.rows:
+            selected_index = selected_runs.selection.rows[0]
+            selected_run = runs[selected_index]
+            show_run_details(client, selected_run)
+        
+    except Exception as e:
+        st.error(f"실행 기록 조회 실패: {str(e)}")
 
-        # 카카오톡 채팅방 리스트 느낌으로 버튼 렌더링
-        for run in runs:
-            label = format_run_title(run)
-            if st.button(label, use_container_width=True, key=f"run-list-{run['id']}"):
-                st.session_state.selected_run_id = run["id"]
-                navigate_to_run(run["id"])  # URL 변경 후 재실행
 
-        return
-
-    # 2) 상세 화면 (대화 형식)
-    run_id: int = selected_from_query
-    top_cols = st.columns([1, 1, 1, 1, 1])
-    with top_cols[0]:
-        if st.button("⬅ 목록으로", use_container_width=True):
-            clear_run_and_go_back()
-    with top_cols[1]:
-        st.metric("Run ID", str(run_id))
-
-    # 실행 상세 조회
+def show_run_details(client: BackendAPIClient, run_data: dict):
+    """선택된 실행의 상세 정보 및 메시지 표시"""
+    
+    st.markdown("---")
+    st.subheader(f"🔍 실행 상세 정보 (ID: {run_data.get('id', 'N/A')})")
+    
+    # 실행 기본 정보
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.metric("팀명", run_data.get('team_name', 'N/A'))
+    
+    with col2:
+        status = run_data.get('status', 'N/A')
+        status_color = {
+            'running': '🟡',
+            'completed': '🟢', 
+            'failed': '🔴'
+        }.get(status, '⚪')
+        st.metric("상태", f"{status_color} {status}")
+    
+    with col3:
+        st.metric("모델", run_data.get('model', 'N/A'))
+    
+    with col4:
+        duration = calculate_duration(
+            run_data.get('started_at'),
+            run_data.get('ended_at')
+        )
+        st.metric("실행 시간", duration)
+    
+    # 작업 내용
+    st.markdown("### 📝 작업 내용")
+    task = run_data.get('task', '작업 내용이 없습니다.')
+    st.text_area("", value=task, height=100, disabled=True)
+    
+    # 시간 정보
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("### ⏰ 시작 시간")
+        started_at = run_data.get('started_at', 'N/A')
+        st.text(started_at)
+    
+    with col2:
+        st.markdown("### ⏰ 종료 시간")
+        ended_at = run_data.get('ended_at', 'N/A')
+        st.text(ended_at)
+    
+    # 메시지 목록
+    st.markdown("### 💬 메시지 목록")
+    
     try:
-        run = api.get_run_full(run_id)
-    except Exception as e:  # noqa: BLE001
-        st.error(f"실행 상세를 불러오지 못했습니다: {e}")
-        return
+        run_id = run_data.get('id')
+        if run_id:
+            messages = client.list_messages_by_run(run_id)
+            
+            if messages:
+                # 메시지 그룹화 (에이전트별)
+                agent_messages = {}
+                for msg in messages:
+                    agent_name = msg.get('agent_name', 'Unknown')
+                    if agent_name not in agent_messages:
+                        agent_messages[agent_name] = []
+                    agent_messages[agent_name].append(msg)
+                
+                # 에이전트별로 메시지 표시
+                for agent_name, msgs in agent_messages.items():
+                    with st.expander(f"🤖 {agent_name} ({len(msgs)}개 메시지)", expanded=False):
+                        for i, msg in enumerate(msgs):
+                            show_message_details(msg, i)
+            else:
+                st.info("메시지가 없습니다.")
+        else:
+            st.warning("실행 ID가 없어 메시지를 조회할 수 없습니다.")
+            
+    except Exception as e:
+        st.error(f"메시지 조회 실패: {str(e)}")
 
-    if not run:
-        st.warning("선택한 실행을 찾을 수 없습니다.")
-        return
 
-    meta = {
-        "team": run.get("team_name") or "-",
-        "status": run.get("status") or "-",
-        "model": run.get("model") or "-",
-    }
-
-    with st.expander("메타 정보", expanded=False):
-        meta_cols = st.columns(3)
-        meta_cols[0].metric("Team", meta["team"])
-        meta_cols[1].metric("Status", meta["status"])
-        meta_cols[2].metric("Model", meta["model"])
-
+def show_message_details(msg: dict, index: int):
+    """개별 메시지 상세 정보 표시"""
+    
+    col1, col2 = st.columns([3, 1])
+    
+    with col1:
+        role = msg.get('role', 'unknown')
+        role_emoji = {
+            'user': '👤',
+            'assistant': '🤖',
+            'system': '⚙️',
+            'tool': '🛠️'
+        }.get(role, '❓')
+        
+        st.markdown(f"**{role_emoji} {role.upper()}**")
+        
+        content = msg.get('content', '내용 없음')
+        if len(content) > 500:
+            content = content[:500] + "..."
+        st.text_area("", value=content, height=100, disabled=True, key=f"msg_{index}")
+    
+    with col2:
+        # 메시지 메타데이터
+        st.markdown("**메타데이터**")
+        
+        tool_name = msg.get('tool_name')
+        if tool_name:
+            st.markdown(f"🛠️ **도구**: {tool_name}")
+        
+        created_at = msg.get('created_at', 'N/A')
+        st.markdown(f"⏰ **시간**: {created_at}")
+        
+        msg_id = msg.get('id', 'N/A')
+        st.markdown(f"🆔 **ID**: {msg_id}")
+    
     st.markdown("---")
 
-    messages: List[Dict[str, Any]] = run.get("messages") or []
-    if not messages:
-        st.info("메시지가 없습니다.")
-        return
 
-    # 대화 형식으로 렌더링: st.chat_message 이용
-    for msg in messages:
-        role_raw = (msg.get("role") or "").lower().strip()
-        role: str
-        if role_raw in {"user", "human"}:
-            role = "user"
-        elif role_raw in {"assistant", "ai", "agent"}:
-            role = "assistant"
-        elif role_raw == "system":
-            role = "system"
+def get_team_list(client: BackendAPIClient) -> list:
+    """팀 목록 조회"""
+    try:
+        runs = client.list_runs(limit=1000)
+        teams = list(set(run.get('team_name') for run in runs if run.get('team_name')))
+        return sorted(teams)
+    except:
+        return []
+
+
+def calculate_duration(started_at: str, ended_at: str) -> str:
+    """실행 시간 계산"""
+    if not started_at:
+        return "N/A"
+    
+    try:
+        start_time = datetime.fromisoformat(started_at.replace('Z', '+00:00'))
+        
+        if ended_at:
+            end_time = datetime.fromisoformat(ended_at.replace('Z', '+00:00'))
+            duration = end_time - start_time
+            
+            # 시간, 분, 초로 변환
+            total_seconds = int(duration.total_seconds())
+            hours = total_seconds // 3600
+            minutes = (total_seconds % 3600) // 60
+            seconds = total_seconds % 60
+            
+            if hours > 0:
+                return f"{hours}시간 {minutes}분 {seconds}초"
+            elif minutes > 0:
+                return f"{minutes}분 {seconds}초"
+            else:
+                return f"{seconds}초"
         else:
-            role = "assistant"
+            return "진행 중"
+            
+    except Exception as e:
+        return f"오류: {str(e)}"
 
-        agent_name = msg.get("agent_name") or ""
-        tool_name = msg.get("tool_name") or ""
-        content = msg.get("content") or ""
 
-        header_parts: List[str] = []
-        if agent_name:
-            header_parts.append(agent_name)
-        if tool_name:
-            header_parts.append(f"tool: {tool_name}")
-        header = " | ".join(header_parts)
-
-        with st.chat_message(role):
-            if header:
-                st.caption(header)
-            st.write(content)
+if __name__ == "__main__":
+    main()
