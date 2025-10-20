@@ -70,3 +70,16 @@ class NotionTodo(Base):
 
 
 
+class NotionBatchStatus(Base):
+    __tablename__ = "notion_batch_statuses"
+
+    id = Column(Integer, primary_key=True, index=True)
+    notion_page_id = Column(String(255), ForeignKey("notion_pages.notion_page_id"), nullable=False, index=True)
+    status = Column(String(50), nullable=False, index=True)  # running | completed | failed | idle
+    message = Column(Text, nullable=True)
+    last_run_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    # 관계는 필요 시 확장 가능 (e.g., NotionPage 역참조)
+

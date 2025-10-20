@@ -131,4 +131,31 @@ class NotionPageListResponse(BaseModel):
     message: Optional[str] = None
 
 
+class NotionBatchStatusCreate(BaseModel):
+    notion_page_id: str
+    status: str
+    message: Optional[str] = None
+    last_run_at: Optional[datetime] = None
+
+
+class NotionBatchStatusUpdate(BaseModel):
+    status: Optional[str] = None
+    message: Optional[str] = None
+    last_run_at: Optional[datetime] = None
+
+
+class NotionBatchStatusRead(BaseModel):
+    id: int
+    notion_page_id: str
+    status: str
+    message: Optional[str] = None
+    last_run_at: Optional[datetime] = None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {
+        "from_attributes": True,
+    }
+
+
 

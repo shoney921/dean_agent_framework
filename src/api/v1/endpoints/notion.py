@@ -12,7 +12,8 @@ from src.core.schemas import (
     NotionConnectionTest,
     NotionPageListResponse,
     NotionPageRead,
-    NotionTodoRead
+    NotionTodoRead,
+    NotionBatchStatusRead
 )
 
 router = APIRouter()
@@ -215,3 +216,35 @@ def update_page_active_status(
         raise HTTPException(status_code=400, detail=result["message"])
     
     return result
+
+
+@router.get("/pages/{notion_page_id}/batch-status", response_model=NotionBatchStatusRead | None)
+def get_batch_status(
+    notion_page_id: str,
+    db: Session = Depends(get_db)
+):
+    """
+    특정 페이지의 배치 상태를 조회합니다.
+    """
+    notion_service = NotionService(db)
+    result = notion_service.get_batch_status(notion_page_id)
+    if not result["success"]:
+        raise HTTPException(status_code=400, detail=result["message"])
+    return result.get("status")
+
+
+@router.put("/pages/{notion_page_id}/batch-status", response_model=NotionBatchStatusRead)
+def update_batch_status(
+    notion_page_id: str,
+    status: str = Query(..., regex="^(running|completed|failed|idle)$"),
+    message: str | None = None,
+    db: Session = Depends(get_db)
+):
+    """
+    특정 페이지의 배치 상태를 업데이트합니다.
+    """
+    notion_service = NotionService(db)
+    result = notion_service.update_batch_status(notion_page_id, status, message)
+    if not result["success"]:
+        raise HTTPException(status_code=400, detail=result["message"])
+    return result["status"]

@@ -71,6 +71,7 @@ def show_registered_pages(client: BackendAPIClient):
             title = node.get('title', '제목 없음')
             url = node.get('url')
             page_id = node.get('page_id')
+            batch_status = node.get('batch_status')
             bullet = (
                 '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#2ea043;margin-right:8px;"></span>'
                 if is_root else
@@ -88,7 +89,7 @@ def show_registered_pages(client: BackendAPIClient):
                 else:
                     st.markdown('-')
             with col3:
-                st.button(f'{page_id}상태가져오면됨', key=f"execute_{page_id}")
+                st.button(f'{batch_status}상태가져오면됨', key=f"execute_{page_id}")
 
             for child in sorted(children_map.get(page_id, []), key=lambda x: x.get('title', '')):
                 render_row(child, children_map, depth + 1, False)

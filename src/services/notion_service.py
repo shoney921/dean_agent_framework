@@ -25,8 +25,10 @@ from src.core.schemas import (
     NotionTodoUpdate,
     NotionTodoRead,
     NotionConnectionTest,
-    NotionPageListResponse
+    NotionPageListResponse,
+    NotionBatchStatusRead
 )
+from src.repositories.notion_batch_status import get_status_map_by_page_ids, upsert_status, get_status
 
 
 class NotionService:
@@ -111,12 +113,30 @@ class NotionService:
                 filter_type=filter_type,
                 sort_direction=sort_direction
             )
-            
+        
             if result["success"]:
+                # 배치 상태 병합
+                page_ids = [p.get("page_id") for p in result.get("pages", []) if p.get("page_id")]
+                
+                # 배치 상태 조회
+                status_map = get_status_map_by_page_ids(self.db, page_ids)
+                merged_pages = []
+                for p in result.get("pages", []):
+                    pid = p.get("page_id")
+                    status_row = status_map.get(pid)
+                    status_payload = None
+                    if status_row:
+                        status_payload = NotionBatchStatusRead.model_validate(status_row).model_dump()
+                    merged = {
+                        **p,
+                        "batch_status": status_payload
+                    }
+                    merged_pages.append(merged)
+
                 return NotionPageListResponse(
                     success=True,
                     count=result["count"],
-                    pages=result["pages"],
+                    pages=merged_pages,
                     message="페이지 목록을 성공적으로 조회했습니다."
                 )
             else:
@@ -134,6 +154,35 @@ class NotionService:
                 pages=[],
                 message=f"페이지 목록 조회 중 오류가 발생했습니다: {str(e)}"
             )
+
+    def update_batch_status(self, notion_page_id: str, status: str, message: Optional[str] = None, last_run_at: Optional[datetime] = None) -> Dict[str, Any]:
+        try:
+            row = upsert_status(self.db, notion_page_id, status, message, last_run_at)
+            return {
+                "success": True,
+                "status": NotionBatchStatusRead.model_validate(row)
+            }
+        except Exception as e:
+            self.db.rollback()
+            return {
+                "success": False,
+                "message": f"배치 상태 업데이트 중 오류가 발생했습니다: {str(e)}"
+            }
+
+    def get_batch_status(self, notion_page_id: str) -> Dict[str, Any]:
+        try:
+            row = get_status(self.db, notion_page_id)
+            if not row:
+                return {"success": True, "status": None}
+            return {
+                "success": True,
+                "status": NotionBatchStatusRead.model_validate(row)
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "message": f"배치 상태 조회 중 오류가 발생했습니다: {str(e)}"
+            }
     
     def register_notion_page_for_ai_batch(
         self,
