@@ -130,11 +130,9 @@ class BackendAPIClient:
         resp.raise_for_status()
         return resp.json()
 
-    def update_page_active_status(self, notion_page_id: str, is_active: str) -> Dict[str, Any]:
+    def update_batch_status(self, notion_page_id: str, status: str) -> Dict[str, Any]:
         """페이지의 AI 배치 동작 활성화 상태를 업데이트합니다."""
-        params = {"is_active": is_active}
-        resp = self.session.put(f"{self.notion_base_url}/pages/{notion_page_id}/active-status", params=params, timeout=15)
+        params = {"status": status}
+        resp = self.session.put(f"{self.notion_base_url}/pages/{notion_page_id}/batch-status", params=params, timeout=15)
         resp.raise_for_status()
         return resp.json()
-
-

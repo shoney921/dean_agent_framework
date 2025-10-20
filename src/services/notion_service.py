@@ -118,6 +118,11 @@ class NotionService:
                 # 배치 상태 병합
                 page_ids = [p.get("page_id") for p in result.get("pages", []) if p.get("page_id")]
                 
+                # 배치 상태 초기화
+                for page_id in page_ids:
+                    if not get_status(self.db, page_id):
+                        upsert_status(self.db, page_id, "idle", None, None)
+
                 # 배치 상태 조회
                 status_map = get_status_map_by_page_ids(self.db, page_ids)
                 merged_pages = []

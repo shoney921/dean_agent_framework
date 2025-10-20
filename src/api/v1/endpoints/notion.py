@@ -3,8 +3,9 @@ Notion 관련 API 엔드포인트
 """
 
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Path
 from sqlalchemy.orm import Session
+import re
 
 from src.api.deps import get_db
 from src.services.notion_service import NotionService
@@ -127,7 +128,7 @@ def get_active_pages(db: Session = Depends(get_db)):
 
 @router.get("/pages/{notion_page_id}/todos")
 def get_notion_todos_from_page(
-    notion_page_id: str,
+    notion_page_id: str = Path(..., description="Notion 페이지 ID (UUID 형식)"),
     db: Session = Depends(get_db)
 ):
     """
@@ -151,7 +152,7 @@ def get_notion_todos_from_page(
 
 @router.post("/pages/{notion_page_id}/todos/sync")
 def sync_notion_todos_to_db(
-    notion_page_id: str,
+    notion_page_id: str = Path(..., description="Notion 페이지 ID (UUID 형식)"),
     db: Session = Depends(get_db)
 ):
     """
@@ -175,7 +176,7 @@ def sync_notion_todos_to_db(
 
 @router.get("/pages/{notion_page_id}/todos/db", response_model=List[NotionTodoRead])
 def get_page_todos_from_db(
-    notion_page_id: str,
+    notion_page_id: str = Path(..., description="Notion 페이지 ID (UUID 형식)"),
     db: Session = Depends(get_db)
 ):
     """
@@ -194,7 +195,7 @@ def get_page_todos_from_db(
 
 @router.put("/pages/{notion_page_id}/active-status")
 def update_page_active_status(
-    notion_page_id: str,
+    notion_page_id: str = Path(..., description="Notion 페이지 ID (UUID 형식)"),
     is_active: str = Query(..., regex="^(true|false)$"),
     db: Session = Depends(get_db)
 ):
@@ -220,7 +221,7 @@ def update_page_active_status(
 
 @router.get("/pages/{notion_page_id}/batch-status", response_model=NotionBatchStatusRead | None)
 def get_batch_status(
-    notion_page_id: str,
+    notion_page_id: str = Path(..., description="Notion 페이지 ID (UUID 형식)"),
     db: Session = Depends(get_db)
 ):
     """
@@ -235,7 +236,7 @@ def get_batch_status(
 
 @router.put("/pages/{notion_page_id}/batch-status", response_model=NotionBatchStatusRead)
 def update_batch_status(
-    notion_page_id: str,
+    notion_page_id: str = Path(..., description="Notion 페이지 ID (UUID 형식)"),
     status: str = Query(..., regex="^(running|completed|failed|idle)$"),
     message: str | None = None,
     db: Session = Depends(get_db)

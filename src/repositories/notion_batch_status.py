@@ -35,7 +35,6 @@ def get_status(db: Session, notion_page_id: str) -> Optional[NotionBatchStatus]:
         .first()
     )
 
-
 def upsert_status(db: Session, notion_page_id: str, status: str, message: Optional[str] = None, last_run_at=None) -> NotionBatchStatus:
     row = (
         db.query(NotionBatchStatus)
