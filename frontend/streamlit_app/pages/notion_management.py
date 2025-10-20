@@ -67,22 +67,47 @@ def show_registered_pages(client: BackendAPIClient):
             ]
             return roots, children_map
 
-        def render_tree_html(node, children_map):
+        def render_row(node, children_map, depth, is_root):
             title = node.get('title', '제목 없음')
             url = node.get('url')
-            link_html = f'<a href="{url}" target="_blank">{title}</a>' if url else title
-            child_nodes = sorted(children_map.get(node.get('page_id'), []), key=lambda x: x.get('title', ''))
-            if child_nodes:
-                children_html = ''.join(render_tree_html(child, children_map) for child in child_nodes)
-                return f'<li>{link_html}<ul>{children_html}</ul></li>'
-            else:
-                return f'<li>{link_html}</li>'
+            page_id = node.get('page_id')
+            bullet = (
+                '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#2ea043;margin-right:8px;"></span>'
+                if is_root else
+                '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;border:1px solid #999;background:transparent;margin-right:8px;"></span>'
+            )
+            indent_px = 18 * depth
+            name_html = f'<span style="margin-left:{indent_px}px">{bullet}{title}</span>'
+
+            col1, col2, col3 = st.columns([6, 10, 4])
+            with col1:
+                st.markdown(name_html, unsafe_allow_html=True)
+            with col2:
+                if url:
+                    st.markdown(f'<a href="{url}" target="_blank">{url}</a>', unsafe_allow_html=True)
+                else:
+                    st.markdown('-')
+            with col3:
+                st.button(f'{page_id}상태가져오면됨', key=f"execute_{page_id}")
+
+            for child in sorted(children_map.get(page_id, []), key=lambda x: x.get('title', '')):
+                render_row(child, children_map, depth + 1, False)
 
         page_list = pages.get('pages', [])
         roots, children_map = build_hierarchy(page_list)
         roots_sorted = sorted(roots, key=lambda x: x.get('title', ''))
-        html = '<ul>' + ''.join(render_tree_html(root, children_map) for root in roots_sorted) + '</ul>'
-        st.markdown(html, unsafe_allow_html=True)
+
+        # 헤더 라인
+        h1, h2, h3 = st.columns([6, 10, 4])
+        with h1:
+            st.markdown('**페이지명**')
+        with h2:
+            st.markdown('**URL**')
+        with h3:
+            st.markdown('**배치실행**')
+
+        for root in roots_sorted:
+            render_row(root, children_map, depth=0, is_root=True)
         
     except Exception as e:
         st.error(f"등록된 페이지 조회 실패: {str(e)}")
