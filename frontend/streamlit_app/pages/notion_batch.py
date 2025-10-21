@@ -23,7 +23,7 @@ def main():
         initial_sidebar_state="expanded"
     )
     
-    st.title("Notion Management")
+    st.title("Notion Batch")
     
     # API 클라이언트 초기화
     try:
@@ -32,16 +32,12 @@ def main():
         st.error(f"API 클라이언트 초기화 실패: {str(e)}")
         return
     
-    # 탭으로 구분
-    tab1, tab2, tab3 = st.tabs(["📋 등록된 페이지", "🔗 페이지 등록", "✅ 체크리스트 관리"])
-    
-    with tab1:
-        show_registered_pages(client)
+    show_registered_pages(client)
 
 def show_registered_pages(client: BackendAPIClient):
     """등록된 페이지 목록 표시"""
     
-    st.subheader("Notion Pages List")
+    st.subheader("Pages List")
     
     try:
         # 등록된 페이지 목록 조회
