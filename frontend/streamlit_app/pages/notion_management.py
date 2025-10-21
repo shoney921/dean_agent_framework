@@ -80,7 +80,7 @@ def show_registered_pages(client: BackendAPIClient):
             indent_px = 18 * depth
             name_html = f'<span style="margin-left:{indent_px}px">{bullet}{title}</span>'
 
-            col1, col2, col3 = st.columns([6, 10, 4])
+            col1, col2, col3 = st.columns([6, 10, 2])
             with col1:
                 st.markdown(name_html, unsafe_allow_html=True)
             with col2:
@@ -104,16 +104,17 @@ def show_registered_pages(client: BackendAPIClient):
         roots_sorted = sorted(roots, key=lambda x: x.get('title', ''))
 
         # 헤더 라인
-        h1, h2, h3 = st.columns([6, 10, 4])
-        with h1:
-            st.markdown('**페이지명**')
-        with h2:
-            st.markdown('**URL**')
-        with h3:
-            st.markdown('**배치실행**')
+        with st.container(border=True):
+            h1, h2, h3 = st.columns([6, 10, 2])
+            with h1:
+                st.markdown('**페이지명**')
+            with h2:
+                st.markdown('**URL**')
+            with h3:
+                st.markdown('**배치실행**')
 
-        for root in roots_sorted:
-            render_row(root, children_map, depth=0, is_root=True)
+            for root in roots_sorted:
+                render_row(root, children_map, depth=0, is_root=True)
         
     except Exception as e:
         st.error(f"등록된 페이지 조회 실패: {str(e)}")

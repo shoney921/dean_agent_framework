@@ -111,37 +111,36 @@ def show_run_card(run: dict, index: int):
     # 카드 컨테이너
     with st.container(border=True):
         # 카드 헤더
-        col1, col2 = st.columns([4, 1])
+        col1, col2 = st.columns([5, 1])
         
         with col1:
-            st.markdown(f"**{run_id}**")
+            task_preview = task[:100] + "..." if len(task) > 100 else task
+            st.markdown(f"**{run_id}. {task_preview}**")
         
         with col2:
-            st.markdown(f"**{status_color} {status.upper()}**")
+            st.caption(f"**{status_color} {status.upper()}**")
         
         # 카드 내용
-        col1, col2, col3 = st.columns([2, 1, 1])
+        col1, col2, col3 = st.columns([2.5, 2.5, 1])
         
         with col1:
             # 작업 내용 (간략하게)
-            task_preview = task[:100] + "..." if len(task) > 100 else task
-            st.markdown(f"**📝 작업**: {task_preview}")
+            st.caption(f"팀: {team_name}")
+            st.caption(f"시간: {duration}")
         
         with col2:
-            st.markdown(f"**🏢 팀**: {team_name}")
-            st.markdown(f"**🤖 모델**: {model}")
-            st.markdown(f"**⏱️ 시간**: {duration}")
-        
-        with col3:
+            st.caption(f"모델: {model}")
             if started_at != 'N/A':
                 try:
                     start_time = datetime.fromisoformat(started_at.replace('Z', '+00:00'))
                     formatted_time = start_time.strftime("%m/%d %H:%M")
-                    st.markdown(f"**📅 시작**: {formatted_time}")
+                    st.caption(f"시작: {formatted_time}")
                 except:
-                    st.markdown(f"**📅 시작**: {started_at}")
+                    st.caption(f"시작: {started_at}")
                     # 상세 보기 버튼
-            if st.button(f"🔍 상세 보기", key=f"detail_btn_{run_id}", type="tertiary"):
+        with col3:
+            st.text(" ")
+            if st.button(f"🔍 상세 보기", key=f"detail_btn_{run_id}", type="secondary"):
                 # 세션 상태에 run_id 저장 후 상세 페이지로 이동
                 st.session_state.selected_run_id = run_id
                 st.switch_page("pages/_run_detail.py")
