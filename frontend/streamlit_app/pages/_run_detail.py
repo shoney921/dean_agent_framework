@@ -30,45 +30,45 @@ def main():
             st.switch_page("pages/agent_logs.py")
         return
     
-    st.title(f"🔍 실행 상세 정보")
+    st.title(f"대화방")
     
-    # 뒤로가기 버튼
-    col1, col2 = st.columns([1, 4])
-    with col1:
-        if st.button("🔙 목록으로 돌아가기"):
-            # 세션 상태 정리 후 목록으로 이동
-            if 'selected_run_id' in st.session_state:
-                del st.session_state.selected_run_id
-            st.switch_page("pages/agent_logs.py")
-    with col2:
-        st.markdown(f"**실행 ID**: {run_id}")
-    
-    st.markdown("---")
-    
-    # API 클라이언트 초기화
-    try:
-        client = BackendAPIClient()
-    except Exception as e:
-        st.error(f"API 클라이언트 초기화 실패: {str(e)}")
-        return
-    
-    # 실행 상세 정보 조회
-    try:
-        # 실행 정보 조회
-        run_data = get_run_by_id(client, run_id)
-        
-        if not run_data:
-            st.error(f"실행 ID '{run_id}'에 해당하는 데이터를 찾을 수 없습니다.")
+    with st.container(border=True):
+        # 뒤로가기 버튼
+        col1, col2 = st.columns([5, 1])
+        with col1:
+            st.markdown(f"**실행 ID**: {run_id}")
+
+        with col2:
+            if st.button("🔙 목록으로 돌아가기"):
+                # 세션 상태 정리 후 목록으로 이동
+                if 'selected_run_id' in st.session_state:
+                    del st.session_state.selected_run_id
+                st.switch_page("pages/agent_logs.py")
+
+        # API 클라이언트 초기화
+        try:
+            client = BackendAPIClient()
+        except Exception as e:
+            st.error(f"API 클라이언트 초기화 실패: {str(e)}")
             return
-        
-        # 실행 기본 정보 표시
-        show_run_overview(run_data)
-        
-        # 메시지 목록 표시
-        show_messages(client, run_id)
-        
-    except Exception as e:
-        st.error(f"실행 상세 정보 조회 실패: {str(e)}")
+
+        # 실행 상세 정보 조회
+        try:
+            # 실행 정보 조회
+            run_data = get_run_by_id(client, run_id)
+            
+            if not run_data:
+                st.error(f"실행 ID '{run_id}'에 해당하는 데이터를 찾을 수 없습니다.")
+                return
+            
+            # 실행 기본 정보 표시
+            show_run_overview(run_data)
+            
+            # 메시지 목록 표시
+            show_messages(client, run_id)
+            
+        except Exception as e:
+            st.error(f"실행 상세 정보 조회 실패: {str(e)}")
 
 
 def get_run_by_id(client: BackendAPIClient, run_id: str):
@@ -87,14 +87,15 @@ def get_run_by_id(client: BackendAPIClient, run_id: str):
 def show_run_overview(run_data: dict):
     """실행 개요 정보 표시"""
     
-    st.subheader("📊 실행 개요")
-    
     # 실행 기본 정보
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2, col3 = st.columns(3)
     with col1:
-        st.markdown("<div style='font-size: 0.8em'>", unsafe_allow_html=True)
-        st.metric("팀명", run_data.get('team_name', 'N/A'))
-        st.markdown("</div>", unsafe_allow_html=True)
+        st.markdown(f"**팀명**: {run_data.get('team_name', 'N/A')}")
+        duration = calculate_duration(
+            run_data.get('started_at'),
+            run_data.get('ended_at')
+        )
+        st.markdown(f"**실행 시간**: {duration}")
     
     with col2:
         status = run_data.get('status', 'N/A')
@@ -103,51 +104,32 @@ def show_run_overview(run_data: dict):
             'completed': '🟢', 
             'failed': '🔴'
         }.get(status, '⚪')
-        st.markdown("<div style='font-size: 0.8em'>", unsafe_allow_html=True)
-        st.metric("상태", f"{status_color} {status}")
-        st.markdown("</div>", unsafe_allow_html=True)
-    
-    with col3:
-        st.markdown("<div style='font-size: 0.8em'>", unsafe_allow_html=True)
-        st.metric("모델", run_data.get('model', 'N/A'))
-        st.markdown("</div>", unsafe_allow_html=True)
-    
-    with col4:
-        duration = calculate_duration(
-            run_data.get('started_at'),
-            run_data.get('ended_at')
-        )
-        st.markdown("<div style='font-size: 0.8em'>", unsafe_allow_html=True)
-        st.metric("실행 시간", duration)
-        st.markdown("</div>", unsafe_allow_html=True)
-    
-    
-    # 시간 정보
-    col1, col2 = st.columns(2)
-    
-    with col1:
+        st.markdown(f"**상태**: {status_color} {status}")
+
         started_at = run_data.get('started_at', 'N/A')
         if started_at != 'N/A':
             try:
                 start_time = datetime.fromisoformat(started_at.replace('Z', '+00:00'))
                 formatted_start = start_time.strftime("%Y-%m-%d %H:%M:%S")
-                st.text(formatted_start)
+                st.markdown(f"**시작 시간**: {formatted_start}")
             except:
-                st.text(started_at)
+                st.markdown(f"**시작 시간**: {started_at}")
         else:
-            st.text(started_at)
+            st.markdown(f"**시작 시간**: {started_at}")
     
-    with col2:
+
+    with col3:
+        st.markdown(f"**모델**: {run_data.get('model', 'N/A')}")
         ended_at = run_data.get('ended_at', 'N/A')
         if ended_at != 'N/A':
             try:
                 end_time = datetime.fromisoformat(ended_at.replace('Z', '+00:00'))
                 formatted_end = end_time.strftime("%Y-%m-%d %H:%M:%S")
-                st.text(formatted_end)
+                st.markdown(f"**종료 시간**: {formatted_end}")
             except:
-                st.text(ended_at)
+                st.markdown(f"**종료 시간**: {ended_at}")
         else:
-            st.text(ended_at)
+            st.markdown(f"**종료 시간**: {ended_at}")
 
 
 def show_messages(client: BackendAPIClient, run_id: str):
@@ -166,7 +148,7 @@ def show_messages(client: BackendAPIClient, run_id: str):
         messages.sort(key=lambda x: x.get('created_at', ''))
         
         # 대화 컨테이너 생성
-        chat_container = st.container()
+        chat_container = st.container(border=True)
         
         with chat_container:
             for i, msg in enumerate(messages):
@@ -190,15 +172,23 @@ def show_chat_message(msg: dict, index: int):
     unique_key_prefix = f"{agent_name}_{msg_id}_{index}"
     
     # 역할에 따른 스타일링
-    if role == 'user':
+    if agent_name == 'user':
         # 사용자 메시지는 오른쪽 정렬
-        with st.chat_message("user"):
-            st.markdown(f"**👤 사용자**")
+        with st.chat_message("human"):
+            st.markdown(f"**사용자**")
             st.markdown(content)
-    elif role == 'assistant':
+                # 메시지 메타데이터 (작게 표시)
+            if created_at != 'N/A':
+                try:
+                    msg_time = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                    formatted_time = msg_time.strftime("%H:%M:%S")
+                    st.caption(f" {formatted_time}")
+                except:
+                    st.caption(f" {created_at}")
+    else :
         # AI 에이전트 메시지는 왼쪽 정렬
-        with st.chat_message("assistant"):
-            st.markdown(f"**🤖 {agent_name}**")
+        with st.chat_message("human", avatar="🤖"):
+            st.markdown(f"**{agent_name}**")
             
             # 스크립트나 코드가 포함된 경우 실행 가능하게 표시
             if is_script_content(content):
@@ -210,25 +200,25 @@ def show_chat_message(msg: dict, index: int):
                     st.success("스크립트가 실행되었습니다! (시뮬레이션)")
             else:
                 st.markdown(content)
-    elif role == 'system':
-        # 시스템 메시지는 중앙에 작게 표시
-        st.markdown(f"<div style='text-align: center; color: #666; font-size: 0.9em; margin: 10px 0;'>⚙️ 시스템: {content}</div>", unsafe_allow_html=True)
-    elif role == 'tool':
-        # 도구 메시지는 특별한 스타일로 표시
-        with st.chat_message("assistant"):
-            st.markdown(f"**🛠️ {tool_name or '도구'}**")
-            st.markdown(content)
+
+            if created_at != 'N/A':
+                try:
+                    msg_time = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                    formatted_time = msg_time.strftime("%H:%M:%S")
+                    st.caption(f" {formatted_time}")
+                except:
+                    st.caption(f" {created_at}")
+    # elif role == 'system':
+    #     # 시스템 메시지는 중앙에 작게 표시
+    #     st.markdown(f"<div style='text-align: center; color: #666; font-size: 0.9em; margin: 10px 0;'>⚙️ 시스템: {content}</div>", unsafe_allow_html=True)
+    # elif role == 'tool':
+    #     # 도구 메시지는 특별한 스타일로 표시
+    #     with st.chat_message("assistant"):
+    #         st.markdown(f"**🛠️ {tool_name or '도구'}**")
+    #         st.markdown(content)
     
-    # 메시지 메타데이터 (작게 표시)
-    if created_at != 'N/A':
-        try:
-            msg_time = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
-            formatted_time = msg_time.strftime("%H:%M:%S")
-            st.caption(f"⏰ {formatted_time} | 🆔 {msg_id}")
-        except:
-            st.caption(f"⏰ {created_at} | 🆔 {msg_id}")
+
     
-    st.markdown("---")
 
 
 def is_script_content(content: str) -> bool:
