@@ -59,7 +59,7 @@ def get_notion_pages_list(
         NotionPageListResponse: 페이지 목록 조회 결과
     """
     notion_service = NotionService(db)
-    return notion_service.get_notion_pages_list(page_size, filter_type, sort_direction)
+    return notion_service.get_notion_client_pages_and_upsert_batch_status_table(page_size, filter_type, sort_direction)
 
 
 @router.post("/pages/register")

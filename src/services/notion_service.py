@@ -79,7 +79,7 @@ class NotionService:
                 api_key_valid=False
             )
     
-    def get_notion_pages_list(
+    def get_notion_client_pages_and_upsert_batch_status_table(
         self,
         page_size: int = 100,
         filter_type: str = "page",
@@ -153,6 +153,11 @@ class NotionService:
     def update_batch_status(self, notion_page_id: str, status: str, message: Optional[str] = None, last_run_at: Optional[datetime] = None) -> Dict[str, Any]:
         try:
             row = upsert_status(self.db, notion_page_id, status, message, last_run_at)
+
+            # 투두리스트 동기화
+            if status == "running":
+                self.sync_notion_todos_to_db(notion_page_id)
+
             return {
                 "success": True,
                 "status": NotionBatchStatusRead.model_validate(row)
@@ -164,22 +169,22 @@ class NotionService:
                 "message": f"배치 상태 업데이트 중 오류가 발생했습니다: {str(e)}"
             }
 
-    def get_batch_status(self, notion_page_id: str) -> Dict[str, Any]:
-        try:
-            row = get_status(self.db, notion_page_id)
-            if not row:
-                return {"success": True, "status": None}
-            return {
-                "success": True,
-                "status": NotionBatchStatusRead.model_validate(row)
-            }
-        except Exception as e:
-            return {
-                "success": False,
-                "message": f"배치 상태 조회 중 오류가 발생했습니다: {str(e)}"
-            }
+    # def get_batch_status(self, notion_page_id: str) -> Dict[str, Any]:
+    #     try:
+    #         row = get_status(self.db, notion_page_id)
+    #         if not row:
+    #             return {"success": True, "status": None}
+    #         return {
+    #             "success": True,
+    #             "status": NotionBatchStatusRead.model_validate(row)
+    #         }
+    #     except Exception as e:
+    #         return {
+    #             "success": False,
+    #             "message": f"배치 상태 조회 중 오류가 발생했습니다: {str(e)}"
+    #         }
     
-    def get_notion_todos_from_page(self, notion_page_id: str) -> Dict[str, Any]:
+    def get_notion_client_todos_from_page(self, notion_page_id: str) -> Dict[str, Any]:
         """
         특정 Notion 페이지의 투두리스트 항목들을 조회합니다.
         
@@ -240,36 +245,44 @@ class NotionService:
         """
         try:
             # Notion에서 투두리스트 조회
-            todos_result = self.get_notion_todos_from_page(notion_page_id)
+            todos_result = self.get_notion_client_todos_from_page(notion_page_id)
             
             if not todos_result["success"]:
                 return todos_result
+
+            # 기존 투두 block_id 목록 조회
+            existing_block_ids = {
+                todo.block_id for todo in self.db.query(NotionTodo).filter(
+                    NotionTodo.notion_page_id == notion_page_id
+                ).all()
+            }
             
-            # 기존 투두리스트 삭제 (해당 페이지의)
-            self.db.query(NotionTodo).filter(
-                NotionTodo.notion_page_id == notion_page_id
-            ).delete()
-            
-            # 새 투두리스트 저장
+            # 새로운 투두만 추가
             synced_count = 0
-            for todo_data in todos_result["todos"]:
-                new_todo = NotionTodo(
+            new_todos = [
+                NotionTodo(
                     notion_page_id=notion_page_id,
-                    block_id=todo_data["block_id"],
-                    content=todo_data["content"],
-                    checked=todo_data["checked"],
-                    block_index=todo_data["block_index"]
+                    block_id=todo["block_id"],
+                    content=todo["content"], 
+                    checked=todo["checked"],
+                    status="pending",
+                    block_index=todo["block_index"]
                 )
-                self.db.add(new_todo)
-                synced_count += 1
+                for todo in todos_result["todos"]
+                if todo["block_id"] not in existing_block_ids
+            ]
             
+            if new_todos:
+                self.db.bulk_save_objects(new_todos)
+                synced_count = len(new_todos)
+                
             # 페이지의 마지막 동기화 시간 업데이트
-            page = self.db.query(NotionBatchStatus).filter(
+            batch_status = self.db.query(NotionBatchStatus).filter(
                 NotionBatchStatus.notion_page_id == notion_page_id
             ).first()
             
-            if page:
-                page.last_synced_at = datetime.utcnow()
+            if batch_status:
+                batch_status.last_synced_at = datetime.utcnow()
             
             self.db.commit()
             
@@ -326,46 +339,46 @@ class NotionService:
         
         return [NotionTodoRead.model_validate(todo) for todo in todos]
     
-    def update_page_active_status(self, notion_page_id: str, is_active: str) -> Dict[str, Any]:
-        """
-        페이지의 AI 배치 동작 활성화 상태를 업데이트합니다.
+    # def update_page_active_status(self, notion_page_id: str, is_active: str) -> Dict[str, Any]:
+    #     """
+    #     페이지의 AI 배치 동작 활성화 상태를 업데이트합니다.
         
-        Args:
-            notion_page_id (str): Notion 페이지 ID
-            is_active (str): 활성화 상태 ("true" 또는 "false")
+    #     Args:
+    #         notion_page_id (str): Notion 페이지 ID
+    #         is_active (str): 활성화 상태 ("true" 또는 "false")
             
-        Returns:
-            Dict: 업데이트 결과
-        """
-        try:
-            page = self.db.query(NotionBatchStatus).filter(
-                NotionBatchStatus.notion_page_id == notion_page_id
-            ).first()
+    #     Returns:
+    #         Dict: 업데이트 결과
+    #     """
+    #     try:
+    #         page = self.db.query(NotionBatchStatus).filter(
+    #             NotionBatchStatus.notion_page_id == notion_page_id
+    #         ).first()
             
-            if not page:
-                return {
-                    "success": False,
-                    "message": "해당 페이지를 찾을 수 없습니다."
-                }
+    #         if not page:
+    #             return {
+    #                 "success": False,
+    #                 "message": "해당 페이지를 찾을 수 없습니다."
+    #             }
             
-            page.is_active = is_active
-            page.updated_at = datetime.utcnow()
+    #         page.is_active = is_active
+    #         page.updated_at = datetime.utcnow()
             
-            self.db.commit()
+    #         self.db.commit()
             
-            status_text = "활성화" if is_active == "true" else "비활성화"
+    #         status_text = "활성화" if is_active == "true" else "비활성화"
             
-            return {
-                "success": True,
-                "message": f"페이지 '{page.title}'가 {status_text}되었습니다.",
-                "page_id": page.id,
-                "notion_page_id": notion_page_id
-            }
+    #         return {
+    #             "success": True,
+    #             "message": f"페이지 '{page.title}'가 {status_text}되었습니다.",
+    #             "page_id": page.id,
+    #             "notion_page_id": notion_page_id
+    #         }
             
-        except Exception as e:
-            self.db.rollback()
-            return {
-                "success": False,
-                "message": f"상태 업데이트 중 오류가 발생했습니다: {str(e)}",
-                "error": str(e)
-            }
+    #     except Exception as e:
+    #         self.db.rollback()
+    #         return {
+    #             "success": False,
+    #             "message": f"상태 업데이트 중 오류가 발생했습니다: {str(e)}",
+    #             "error": str(e)
+    #         }
