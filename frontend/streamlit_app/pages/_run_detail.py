@@ -208,17 +208,6 @@ def show_chat_message(msg: dict, index: int):
                     st.caption(f" {formatted_time}")
                 except:
                     st.caption(f" {created_at}")
-    # elif role == 'system':
-    #     # 시스템 메시지는 중앙에 작게 표시
-    #     st.markdown(f"<div style='text-align: center; color: #666; font-size: 0.9em; margin: 10px 0;'>⚙️ 시스템: {content}</div>", unsafe_allow_html=True)
-    # elif role == 'tool':
-    #     # 도구 메시지는 특별한 스타일로 표시
-    #     with st.chat_message("assistant"):
-    #         st.markdown(f"**🛠️ {tool_name or '도구'}**")
-    #         st.markdown(content)
-    
-
-    
 
 
 def is_script_content(content: str) -> bool:
