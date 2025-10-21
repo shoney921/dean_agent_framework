@@ -26,8 +26,8 @@ def main():
 
     if not run_id:
         st.error("실행 ID가 없습니다. 목록에서 실행을 선택해주세요.")
-        if st.button("🔙 목록으로 돌아가기"):
-            st.switch_page("pages/agent_logs.py")
+        if st.button("🔙 돌아가기"):
+            st.switch_page("pages/chat_list.py")
         return
     
     st.title(f"대화방")
@@ -39,11 +39,11 @@ def main():
             st.markdown(f"**실행 ID**: {run_id}")
 
         with col2:
-            if st.button("🔙 목록으로 돌아가기"):
+            if st.button("🔙 돌아가기"):
                 # 세션 상태 정리 후 목록으로 이동
                 if 'selected_run_id' in st.session_state:
                     del st.session_state.selected_run_id
-                st.switch_page("pages/agent_logs.py")
+                st.switch_page("pages/chat_list.py")
 
         # API 클라이언트 초기화
         try:
