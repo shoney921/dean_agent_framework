@@ -158,4 +158,33 @@ class NotionBatchStatusRead(BaseModel):
     }
 
 
+# 배치 관련 스키마
+class BatchStartRequest(BaseModel):
+    notion_page_id: str
+
+
+class BatchStartResponse(BaseModel):
+    success: bool
+    message: str
+    notion_page_id: str
+    start_time: str
+    end_time: str
+
+
+class BatchStopResponse(BaseModel):
+    success: bool
+    message: str
+    notion_page_id: str
+    end_time: str
+
+
+class BatchStatusResponse(BaseModel):
+    success: bool
+    notion_page_id: str
+    db_status: Optional[str] = None
+    db_message: Optional[str] = None
+    db_last_run_at: Optional[str] = None
+    is_running: bool
+    running_info: Optional[dict] = None
+
 
