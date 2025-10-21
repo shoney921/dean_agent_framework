@@ -40,41 +40,42 @@ class AgentMessage(Base):
     run = relationship("AgentRun", back_populates="messages")
 
 
-class NotionPage(Base):
-    __tablename__ = "notion_pages"
+## 노션배치상태 테이블로 변경
+# class NotionPage(Base):
+#     __tablename__ = "notion_pages"
 
-    id = Column(Integer, primary_key=True, index=True)
-    notion_page_id = Column(String(255), nullable=False, unique=True, index=True)
-    title = Column(String(500), nullable=False)
-    url = Column(String(1000), nullable=True)
-    parent_page_id = Column(String(255), nullable=True)
-    is_active = Column(String(10), default="true", nullable=False)  # AI 배치 동작 여부
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
-    last_synced_at = Column(DateTime, nullable=True)
+#     id = Column(Integer, primary_key=True, index=True)
+#     notion_page_id = Column(String(255), nullable=False, unique=True, index=True)
+#     title = Column(String(500), nullable=False)
+#     url = Column(String(1000), nullable=True)
+#     parent_page_id = Column(String(255), nullable=True)
+#     is_active = Column(String(10), default="true", nullable=False)  # AI 배치 동작 여부
+#     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+#     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+#     last_synced_at = Column(DateTime, nullable=True)
 
 
 class NotionTodo(Base):
     __tablename__ = "notion_todos"
 
     id = Column(Integer, primary_key=True, index=True)
-    notion_page_id = Column(String(255), ForeignKey("notion_pages.notion_page_id"), nullable=False, index=True)
+    notion_page_id = Column(String(255), ForeignKey("notion_batch_statuses.notion_page_id"), nullable=False, index=True)
     block_id = Column(String(255), nullable=False, unique=True, index=True)
     content = Column(Text, nullable=False)
     checked = Column(String(10), default="false", nullable=False)
+    status = Column(String(50), nullable=False, index=True)  # pending | skipped | done
     block_index = Column(Integer, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
-    notion_page = relationship("NotionPage")
-
+    notion_page = relationship("NotionBatchStatus")
 
 
 class NotionBatchStatus(Base):
     __tablename__ = "notion_batch_statuses"
 
     id = Column(Integer, primary_key=True, index=True)
-    notion_page_id = Column(String(255), ForeignKey("notion_pages.notion_page_id"), nullable=False, index=True)
+    notion_page_id = Column(String(255), nullable=False, unique=True, index=True)
     status = Column(String(50), nullable=False, index=True)  # running | completed | failed | idle
     message = Column(Text, nullable=True)
     last_run_at = Column(DateTime, nullable=True)

@@ -16,18 +16,8 @@ from src.client.notion_client import (
     read_notion_page,
     search_notion
 )
-from src.core.models import NotionPage, NotionTodo
-from src.core.schemas import (
-    NotionPageCreate,
-    NotionPageUpdate,
-    NotionPageRead,
-    NotionTodoCreate,
-    NotionTodoUpdate,
-    NotionTodoRead,
-    NotionConnectionTest,
-    NotionPageListResponse,
-    NotionBatchStatusRead
-)
+from src.core.models import NotionBatchStatus, NotionTodo
+from src.core.schemas import NotionConnectionTest, NotionPageListResponse, NotionBatchStatusRead, NotionTodoRead
 from src.repositories.notion_batch_status import get_status_map_by_page_ids, upsert_status, get_status
 
 
@@ -189,85 +179,6 @@ class NotionService:
                 "message": f"배치 상태 조회 중 오류가 발생했습니다: {str(e)}"
             }
     
-    def register_notion_page_for_ai_batch(
-        self,
-        notion_page_id: str,
-        title: str,
-        url: Optional[str] = None,
-        parent_page_id: Optional[str] = None,
-        is_active: str = "true"
-    ) -> Dict[str, Any]:
-        """
-        AI 배치 동작할 Notion 페이지를 데이터베이스에 등록합니다.
-        
-        Args:
-            notion_page_id (str): Notion 페이지 ID
-            title (str): 페이지 제목
-            url (str, optional): 페이지 URL
-            parent_page_id (str, optional): 부모 페이지 ID
-            is_active (str): AI 배치 동작 여부 ("true" 또는 "false")
-            
-        Returns:
-            Dict: 등록 결과
-        """
-        try:
-            # 기존 페이지 확인
-            existing_page = self.db.query(NotionPage).filter(
-                NotionPage.notion_page_id == notion_page_id
-            ).first()
-            
-            if existing_page:
-                # 기존 페이지 업데이트
-                existing_page.title = title
-                existing_page.url = url
-                existing_page.parent_page_id = parent_page_id
-                existing_page.is_active = is_active
-                existing_page.updated_at = datetime.utcnow()
-                
-                self.db.commit()
-                
-                return {
-                    "success": True,
-                    "message": f"페이지 '{title}'가 성공적으로 업데이트되었습니다.",
-                    "page_id": existing_page.id,
-                    "notion_page_id": notion_page_id
-                }
-            else:
-                # 새 페이지 생성
-                new_page = NotionPage(
-                    notion_page_id=notion_page_id,
-                    title=title,
-                    url=url,
-                    parent_page_id=parent_page_id,
-                    is_active=is_active
-                )
-                
-                self.db.add(new_page)
-                self.db.commit()
-                self.db.refresh(new_page)
-                
-                return {
-                    "success": True,
-                    "message": f"페이지 '{title}'가 AI 배치 동작 대상으로 성공적으로 등록되었습니다.",
-                    "page_id": new_page.id,
-                    "notion_page_id": notion_page_id
-                }
-                
-        except IntegrityError:
-            self.db.rollback()
-            return {
-                "success": False,
-                "message": "페이지 ID가 이미 존재합니다.",
-                "error": "DUPLICATE_PAGE_ID"
-            }
-        except Exception as e:
-            self.db.rollback()
-            return {
-                "success": False,
-                "message": f"페이지 등록 중 오류가 발생했습니다: {str(e)}",
-                "error": str(e)
-            }
-    
     def get_notion_todos_from_page(self, notion_page_id: str) -> Dict[str, Any]:
         """
         특정 Notion 페이지의 투두리스트 항목들을 조회합니다.
@@ -353,8 +264,8 @@ class NotionService:
                 synced_count += 1
             
             # 페이지의 마지막 동기화 시간 업데이트
-            page = self.db.query(NotionPage).filter(
-                NotionPage.notion_page_id == notion_page_id
+            page = self.db.query(NotionBatchStatus).filter(
+                NotionBatchStatus.notion_page_id == notion_page_id
             ).first()
             
             if page:
@@ -377,27 +288,27 @@ class NotionService:
                 "error": str(e)
             }
     
-    def get_registered_pages(self) -> List[NotionPageRead]:
-        """
-        등록된 Notion 페이지 목록을 조회합니다.
+    # def get_registered_pages(self) -> List[NotionPageRead]:
+    #     """
+    #     등록된 Notion 페이지 목록을 조회합니다.
         
-        Returns:
-            List[NotionPageRead]: 등록된 페이지 목록
-        """
-        pages = self.db.query(NotionPage).all()
-        return [NotionPageRead.model_validate(page) for page in pages]
+    #     Returns:
+    #         List[NotionPageRead]: 등록된 페이지 목록
+    #     """
+    #     pages = self.db.query(NotionPage).all()
+    #     return [NotionPageRead.model_validate(page) for page in pages]
     
-    def get_active_pages(self) -> List[NotionPageRead]:
-        """
-        AI 배치 동작이 활성화된 Notion 페이지 목록을 조회합니다.
+    # def get_active_pages(self) -> List[NotionPageRead]:
+    #     """
+    #     AI 배치 동작이 활성화된 Notion 페이지 목록을 조회합니다.
         
-        Returns:
-            List[NotionPageRead]: 활성화된 페이지 목록
-        """
-        pages = self.db.query(NotionPage).filter(
-            NotionPage.is_active == "true"
-        ).all()
-        return [NotionPageRead.model_validate(page) for page in pages]
+    #     Returns:
+    #         List[NotionPageRead]: 활성화된 페이지 목록
+    #     """
+    #     pages = self.db.query(NotionPage).filter(
+    #         NotionPage.is_active == "true"
+    #     ).all()
+    #     return [NotionPageRead.model_validate(page) for page in pages]
     
     def get_page_todos_from_db(self, notion_page_id: str) -> List[NotionTodoRead]:
         """
@@ -427,8 +338,8 @@ class NotionService:
             Dict: 업데이트 결과
         """
         try:
-            page = self.db.query(NotionPage).filter(
-                NotionPage.notion_page_id == notion_page_id
+            page = self.db.query(NotionBatchStatus).filter(
+                NotionBatchStatus.notion_page_id == notion_page_id
             ).first()
             
             if not page:
