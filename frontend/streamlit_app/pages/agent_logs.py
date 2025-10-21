@@ -23,8 +23,7 @@ def main():
     )
     
     
-    st.title("📋 실행 로그 목록")
-    st.markdown("---")
+    st.title("대화 목록")
     
     # API 클라이언트 초기화
     try:
@@ -74,11 +73,15 @@ def main():
             st.info(f"'{status_filter}' 상태의 실행 기록이 없습니다.")
             return
         
-        # 실행 목록을 카드 형태로 표시
-        st.subheader(f"📊 실행 목록 ({len(runs)}개)")
+        st.markdown("---")
         
-        for i, run in enumerate(runs):
-            show_run_card(run, i)
+        # 실행 목록을 컨테이너로 묶어서 표시
+        st.subheader(f"대화 목록 ({len(runs)}개)")
+        
+        # 전체 목록을 하나의 컨테이너로 묶기
+        with st.container():
+            for i, run in enumerate(runs):
+                show_run_card(run, i)
         
     except Exception as e:
         st.error(f"실행 기록 조회 실패: {str(e)}")
@@ -106,12 +109,12 @@ def show_run_card(run: dict, index: int):
     duration = calculate_duration(started_at, ended_at)
     
     # 카드 컨테이너
-    with st.container():
+    with st.container(border=True):
         # 카드 헤더
         col1, col2 = st.columns([4, 1])
         
         with col1:
-            st.markdown(f"### 🆔 {run_id}")
+            st.markdown(f"**{run_id}**")
         
         with col2:
             st.markdown(f"**{status_color} {status.upper()}**")
@@ -127,9 +130,9 @@ def show_run_card(run: dict, index: int):
         with col2:
             st.markdown(f"**🏢 팀**: {team_name}")
             st.markdown(f"**🤖 모델**: {model}")
+            st.markdown(f"**⏱️ 시간**: {duration}")
         
         with col3:
-            st.markdown(f"**⏱️ 시간**: {duration}")
             if started_at != 'N/A':
                 try:
                     start_time = datetime.fromisoformat(started_at.replace('Z', '+00:00'))
@@ -137,14 +140,12 @@ def show_run_card(run: dict, index: int):
                     st.markdown(f"**📅 시작**: {formatted_time}")
                 except:
                     st.markdown(f"**📅 시작**: {started_at}")
-        
-        # 상세 보기 버튼
-        if st.button(f"🔍 상세 보기", key=f"detail_btn_{run_id}"):
-            # 세션 상태에 run_id 저장 후 상세 페이지로 이동
-            st.session_state.selected_run_id = run_id
-            st.switch_page("pages/_run_detail.py")
-        
-        st.markdown("---")
+                    # 상세 보기 버튼
+            if st.button(f"🔍 상세 보기", key=f"detail_btn_{run_id}", type="tertiary"):
+                # 세션 상태에 run_id 저장 후 상세 페이지로 이동
+                st.session_state.selected_run_id = run_id
+                st.switch_page("pages/_run_detail.py")
+
 
 
 def get_team_list(client: BackendAPIClient) -> list:
