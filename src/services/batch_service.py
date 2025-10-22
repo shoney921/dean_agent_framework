@@ -17,7 +17,7 @@ from apscheduler.triggers.interval import IntervalTrigger
 from apscheduler.triggers.date import DateTrigger
 
 from src.core.models import NotionBatchStatus, NotionTodo
-from src.client.notion_client import get_notion_client
+from src.client.notion_client import get_notion_client, append_completion_message
 from src.core.schemas import NotionBatchStatusRead
 from src.repositories.notion_batch_status import upsert_status, get_status
 
