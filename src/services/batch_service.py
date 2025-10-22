@@ -253,7 +253,7 @@ class BatchService:
             self.db.commit()
             
             # Notion API에 완료 메시지 추가
-            self._add_completion_message_to_notion(todo.notion_page_id, todo.block_id)
+            append_completion_message(todo.block_id, "투두 처리 완료")
             
             self.logger.info(f"투두 처리 완료: {todo.block_id}")
             

@@ -5,6 +5,8 @@ Notion API를 다루는 도구 함수들
 데이터베이스 쿼리 등의 기능을 제공합니다.
 """
 
+import datetime
+from datetime import timezone
 import os
 from typing import Dict, List, Optional, Any
 from notion_client import Client
@@ -205,7 +207,20 @@ def read_notion_page(page_id: str) -> Dict[str, Any]:
                 text_array = block.get("quote", {}).get("rich_text", [])
                 text_content = "".join([text_obj.get("plain_text", "") for text_obj in text_array])
                 block_data["content"] = text_content
+
+            elif block_type == "callout":
+                text_array = block.get("callout", {}).get("rich_text", [])
+                text_content = "".join([text_obj.get("plain_text", "") for text_obj in text_array])
+                block_data["content"] = text_content
+                block_data["color"] = block.get("callout", {}).get("color", "default")
                 
+            elif block_type == "divider":
+                block_data["content"] = ""
+                block_data["raw_type"] = block_type
+                
+            elif block_type == "embed":
+                block_data["content"] = ""
+                block_data["raw_type"] = block_type
             else:
                 # 기타 블록 타입 처리
                 block_data["content"] = ""
@@ -797,5 +812,56 @@ def list_pages_by_parent(
             "success": False,
             "error": str(e),
             "message": f"하위 페이지 목록 조회 중 오류가 발생했습니다: {str(e)}"
+        }
+
+
+def append_completion_message(block_id: str, completion_text: str = None) -> dict:
+    """
+    Notion 블록 아래에 완료 메시지를 추가합니다.
+    
+    Args:
+        block_id (str): 완료 메시지를 추가할 블록 ID
+        completion_text (str, optional): 사용자 정의 완료 메시지. 없으면 기본 메시지 사용
+        
+    Returns:
+        dict: API 응답 결과
+    """
+    try:
+        if not completion_text:
+            completion_text = f" 작업 완료: {datetime.datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')}"
+        
+        response = get_notion_client().blocks.children.append(
+            block_id=block_id,
+            children=[
+                {
+                    "type": "callout",
+                    "callout": {
+                        "rich_text": [
+                            {
+                                "type": "text",
+                                "text": {
+                                    "content": completion_text
+                                }
+                            }
+                        ],
+                        "icon": {
+                            "emoji": "🤖"
+                        },
+                        "color": "gray_background"
+                    }
+                }
+            ]
+        )
+        return {
+            "success": True,
+            "block_id": response.get("id"),
+            "message": "완료 메시지가 성공적으로 추가되었습니다."
+        }
+        
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "message": f"완료 메시지 추가 중 오류가 발생했습니다: {str(e)}"
         }
 
