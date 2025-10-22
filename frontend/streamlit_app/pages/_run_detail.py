@@ -8,6 +8,7 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..
 sys.path.append(project_root)
 
 from frontend.streamlit_app.services.api import BackendAPIClient
+from urllib.parse import urlencode
 
 
 def main():
@@ -21,14 +22,18 @@ def main():
         initial_sidebar_state="expanded"
     )
     
-    # 세션 상태에서 run_id 가져오기
-    run_id = st.session_state.get('selected_run_id')
+    # URL 쿼리 파라미터 또는 세션 상태에서 run_id 가져오기
+    run_id = st.query_params.get('run_id') or st.session_state.get('selected_run_id')
 
     if not run_id:
-        st.error("실행 ID가 없습니다. 목록에서 실행을 선택해주세요.")
+        st.error("실행 ID가 없습니다. 목록에서 실행을 선택하거나 URL에 run_id를 포함해주세요.")
         if st.button("🔙 돌아가기"):
             st.switch_page("pages/chat_list.py")
         return
+    
+    # URL 파라미터로 접근한 경우 세션 상태도 업데이트 (일관성 유지)
+    if st.query_params.get('run_id') and not st.session_state.get('selected_run_id'):
+        st.session_state.selected_run_id = run_id
     
     st.title(f"대화방")
     
@@ -54,12 +59,8 @@ def main():
 
         # 실행 상세 정보 조회
         try:
-            # 실행 정보 조회
-            run_data = get_run_by_id(client, run_id)
-            
-            if not run_data:
-                st.error(f"실행 ID '{run_id}'에 해당하는 데이터를 찾을 수 없습니다.")
-                return
+            # API를 통해 직접 실행 정보 조회
+            run_data = client.get_run(int(run_id))
             
             # 실행 기본 정보 표시
             show_run_overview(run_data)
@@ -69,19 +70,6 @@ def main():
             
         except Exception as e:
             st.error(f"실행 상세 정보 조회 실패: {str(e)}")
-
-
-def get_run_by_id(client: BackendAPIClient, run_id: str):
-    """특정 실행 ID로 실행 정보 조회"""
-    try:
-        runs = client.list_runs(limit=1000)
-        for run in runs:
-            if run.get('id') == run_id:
-                return run
-        return None
-    except Exception as e:
-        st.error(f"실행 정보 조회 실패: {str(e)}")
-        return None
 
 
 def show_run_overview(run_data: dict):
@@ -258,6 +246,22 @@ def calculate_duration(started_at: str, ended_at: str) -> str:
             
     except Exception as e:
         return f"오류: {str(e)}"
+
+
+def generate_run_detail_url(run_id: str, base_url: str = None) -> str:
+    """실행 상세 페이지 URL 생성 (노션 링크용)"""
+    if not base_url:
+        # 기본 URL 설정 (실제 배포 환경에 맞게 수정 필요)
+        base_url = "http://localhost:8501"
+    
+    # Streamlit 페이지 URL 생성
+    page_url = f"{base_url}/pages/_run_detail.py"
+    
+    # 쿼리 파라미터 추가
+    params = {"run_id": run_id}
+    query_string = urlencode(params)
+    
+    return f"{page_url}?{query_string}"
 
 
 if __name__ == "__main__":
