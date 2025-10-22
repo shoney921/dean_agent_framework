@@ -21,7 +21,9 @@ from src.client.notion_client import get_notion_client, append_completion_messag
 from src.core.schemas import NotionBatchStatusRead
 from src.repositories.notion_batch_status import upsert_status, get_status
 
+from src.services.ai_service import AIService
 from src.services.notion_service import NotionService
+
 class BatchService:
     """배치 서비스 클래스"""
     
@@ -36,6 +38,7 @@ class BatchService:
         self.notion_service = NotionService(db)
         self.notion_client = get_notion_client()
         self.notion_batch_status = NotionBatchStatus()
+        self.ai_service = AIService(db)
     
     def update_batch_status(self, notion_page_id: str, status: str, message: Optional[str] = None, last_run_at: Optional[datetime] = None) -> Dict[str, Any]:
         try:
@@ -248,10 +251,26 @@ class BatchService:
             todo (NotionTodo): 처리할 투두 항목
         """
         try:
-            # TODO AI Agent 랭그래프 호출해서 투두 내용을 처리
+            # AI Agent 랭그래프 호출해서 투두 내용을 처리
+            self.logger.info(f"투두 라우팅 시작: {todo.content}")
             
-            # Notion API에 완료 메시지 추가
-            append_completion_message(todo.block_id, f"투두 처리 완료{todo.content}")
+            # 팀 라우팅 실행 (비동기)
+            import asyncio
+            result = asyncio.run(self.ai_service.route_todo_to_agent(todo))
+
+            print(f"투두 처리 결과: {result}")
+
+            # AI 처리 결과를 Notion에 추가
+            ai_summary = result.get('ai_result', 'AI 처리 완료')
+            completion_message = f"{todo.content} 투두 처리 결과:\n{ai_summary}"
+            
+            append_result = append_completion_message(todo.block_id, completion_message)
+            
+            if append_result.get('success'):
+                self.logger.info(f"Notion에 AI 처리 결과 추가 성공: {todo.block_id}")
+            else:
+                self.logger.warning(f"Notion AI 결과 추가 실패: {append_result.get('message')}")
+
 
             # 투두 상태를 done으로 변경
             todo.status = "done"

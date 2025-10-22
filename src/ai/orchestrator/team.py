@@ -68,24 +68,33 @@ async def run_team_task(
     task: str,
     run_id: int,
     msg_repo: AgentMessageRepository,
-) -> None:
+) -> str:
     """
     팀에 작업을 할당하고 결과를 스트리밍 방식으로 출력합니다.
     
     Args:
         team: 실행할 팀
         task: 수행할 작업 설명
+        run_id: 실행 ID
+        msg_repo: 메시지 저장소
+        
+    Returns:
+        str: 팀의 최종 처리 결과
     """
     print_section_header("SelectorGroupChat 예시 시작")
     print(f"\n질문: {task}\n")
     print("=" * 80)
     
     stream = team.run_stream(task=task)
+    final_result = ""
     
     async for message in stream:
         if hasattr(message, 'source') and hasattr(message, 'content'):
             print(f"\n---------- {message.source} ----------")
             print(message.content)
+            
+            # 마지막 메시지를 최종 결과로 저장
+            final_result = str(message.content)
 
             msg_repo.add(
                 run_id=run_id,
@@ -96,6 +105,7 @@ async def run_team_task(
             )
     
     print_section_header("작업 완료!")
+    return final_result
 
 
 # =============================================================================
