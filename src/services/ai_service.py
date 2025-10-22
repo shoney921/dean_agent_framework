@@ -1,6 +1,8 @@
 
 
 
+import asyncio
+from typing import List, Dict, Any
 from requests import Session
 
 from src.ai.agents.analysis_agent import create_devil_advocate_analyst_agent
@@ -45,17 +47,50 @@ class AIService:
         )
     
     async def route_todo_to_agent(self, todo: NotionTodo):
-        from src.core.config import DEFAULT_MODEL
+        from src.core.config import DEFAULT_MODEL, TEAM_RUN_TIMEOUT_SECONDS
+        import asyncio
+        
         run = self.run_repo.create(team_name="투두 처리팀", task=todo.content, model=DEFAULT_MODEL)
-        ai_result = await run_team_task(self.team, todo.content, run.id, self.msg_repo)
-        self.run_repo.finish(run.id, status="completed")
         
-        # AI 처리 결과를 요약해서 반환 (너무 길면 잘라내기)
-        summary_result = ai_result[:200] + "..." if len(ai_result) > 200 else ai_result
-        
-        return {
-            "success": True, 
-            "message": f"투두 '{todo.content}' 처리가 완료되었습니다.",
-            "ai_result": summary_result,
-            "full_result": ai_result
-        }
+        try:
+            # 타임아웃과 함께 AI 작업 실행
+            ai_result = await asyncio.wait_for(
+                run_team_task(self.team, todo.content, run.id, self.msg_repo),
+                timeout=TEAM_RUN_TIMEOUT_SECONDS
+            )
+            self.run_repo.finish(run.id, status="completed")
+            
+            # AI 처리 결과를 요약해서 반환 (너무 길면 잘라내기)
+            summary_result = ai_result[:200] + "..." if len(ai_result) > 200 else ai_result
+            
+            return {
+                "success": True, 
+                "message": f"투두 '{todo.content}' 처리가 완료되었습니다.",
+                "ai_result": summary_result,
+                "url": self.generate_run_detail_url(run.id),
+                "full_result": ai_result
+            }
+            
+        except asyncio.TimeoutError:
+            self.run_repo.finish(run.id, status="timeout")
+            return {
+                "success": False,
+                "message": f"투두 '{todo.content}' 처리가 타임아웃으로 중단되었습니다.",
+                "ai_result": "작업이 타임아웃으로 인해 중단되었습니다.",
+                "url": self.generate_run_detail_url(run.id),
+                "full_result": "타임아웃 발생"
+            }
+        except Exception as e:
+            self.run_repo.finish(run.id, status="error")
+            return {
+                "success": False,
+                "message": f"투두 '{todo.content}' 처리 중 오류가 발생했습니다: {str(e)}",
+                "ai_result": f"오류 발생: {str(e)}",
+                "url": self.generate_run_detail_url(run.id),
+                "full_result": f"오류: {str(e)}"
+            }
+
+    def generate_run_detail_url(self, run_id: int):
+        import os
+        base_url = os.getenv("STREAMLIT_BASE_URL", "http://localhost:8501")
+        return f"{base_url}/run_detail?run_id={run_id}"

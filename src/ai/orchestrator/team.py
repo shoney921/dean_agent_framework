@@ -34,7 +34,14 @@ def create_team(
     Returns:
         SelectorGroupChat: 설정된 팀
     """
-    termination = TextMentionTermination("TERMINATE") | MaxMessageTermination(max_messages=max_messages)
+    # 더 엄격한 종료 조건 추가
+    termination = (
+        TextMentionTermination("TERMINATE") | 
+        MaxMessageTermination(max_messages=max_messages) |
+        TextMentionTermination("완료") |
+        TextMentionTermination("작업 완료") |
+        TextMentionTermination("분석 완료")
+    )
     
     selector_prompt = """다음 작업을 수행할 에이전트를 선택하세요.
 
@@ -81,28 +88,71 @@ async def run_team_task(
     Returns:
         str: 팀의 최종 처리 결과
     """
+    from src.core.config import TEAM_RUN_TIMEOUT_SECONDS
+    import asyncio
+    
     print_section_header("SelectorGroupChat 예시 시작")
     print(f"\n질문: {task}\n")
     print("=" * 80)
     
-    stream = team.run_stream(task=task)
-    final_result = ""
+    # 무한 루프 방지를 위한 변수들
+    message_count = 0
+    recent_messages = []
+    duplicate_threshold = 3  # 같은 메시지가 3번 반복되면 종료
     
-    async for message in stream:
-        if hasattr(message, 'source') and hasattr(message, 'content'):
-            print(f"\n---------- {message.source} ----------")
-            print(message.content)
+    try:
+        # 타임아웃 설정
+        stream = team.run_stream(task=task)
+        final_result = ""
+        
+        async def process_messages():
+            nonlocal final_result, message_count, recent_messages
             
-            # 마지막 메시지를 최종 결과로 저장
-            final_result = str(message.content)
+            async for message in stream:
+                if hasattr(message, 'source') and hasattr(message, 'content'):
+                    message_count += 1
+                    content = str(message.content)
+                    
+                    print(f"\n---------- {message.source} ----------")
+                    print(content)
+                    
+                    # 중복 메시지 감지
+                    recent_messages.append(content[:100])  # 메시지의 처음 100자만 저장
+                    if len(recent_messages) > duplicate_threshold:
+                        recent_messages.pop(0)
+                    
+                    # 중복 메시지 체크
+                    if len(recent_messages) >= duplicate_threshold:
+                        unique_messages = set(recent_messages)
+                        if len(unique_messages) <= 1:  # 모든 메시지가 같으면
+                            print(f"\n⚠️ 중복 메시지 감지! 대화를 종료합니다.")
+                            break
+                    
+                    # 마지막 메시지를 최종 결과로 저장
+                    final_result = content
 
-            msg_repo.add(
-                run_id=run_id,
-                agent_name=str(message.source),
-                role="assistant",  # 필요 시 매핑 로직 적용
-                content=str(message.content),
-                tool_name=getattr(message, "tool", None),
-            )
+                    msg_repo.add(
+                        run_id=run_id,
+                        agent_name=str(message.source),
+                        role="assistant",
+                        content=content,
+                        tool_name=getattr(message, "tool", None),
+                    )
+                    
+                    # 메시지 수 제한 체크
+                    if message_count >= 15:  # MAX_MESSAGES보다 더 엄격
+                        print(f"\n⚠️ 최대 메시지 수 도달! 대화를 종료합니다.")
+                        break
+                        
+        # 타임아웃과 함께 실행
+        await asyncio.wait_for(process_messages(), timeout=TEAM_RUN_TIMEOUT_SECONDS)
+        
+    except asyncio.TimeoutError:
+        print(f"\n⚠️ 타임아웃 발생! ({TEAM_RUN_TIMEOUT_SECONDS}초)")
+        final_result = "작업이 타임아웃으로 인해 중단되었습니다."
+    except Exception as e:
+        print(f"\n⚠️ 오류 발생: {str(e)}")
+        final_result = f"작업 중 오류가 발생했습니다: {str(e)}"
     
     print_section_header("작업 완료!")
     return final_result

@@ -23,10 +23,20 @@ DEFAULT_MODEL = "gemini-2.5-flash"
 # 시스템 제한 설정
 # ============================================================================
 
-MAX_MESSAGES = 25
+MAX_MESSAGES = 10  # 무한 루프 방지를 위해 메시지 수 제한
 MAX_SEARCH_RESULTS = 5
-TEAM_RUN_TIMEOUT_SECONDS = int(os.getenv("TEAM_RUN_TIMEOUT_SECONDS", "180"))
+TEAM_RUN_TIMEOUT_SECONDS = int(os.getenv("TEAM_RUN_TIMEOUT_SECONDS", "120"))  # 타임아웃 단축
 DEVILS_ADVOCATE_PREVIEW_ROUNDS = int(os.getenv("DEVILS_ADVOCATE_PREVIEW_ROUNDS", "2"))
+
+# 큐 관리 설정
+MAX_CONCURRENT_TASKS = int(os.getenv("MAX_CONCURRENT_TASKS", "3"))  # 최대 동시 처리 수
+QUEUE_BATCH_SIZE = int(os.getenv("QUEUE_BATCH_SIZE", "3"))  # 배치당 처리 수
+QUEUE_PRIORITY_WEIGHTS = {
+    "urgent": 3,
+    "high": 2, 
+    "normal": 1,
+    "low": 0.5
+}
 
 # ============================================================================
 # 사용 가능한 모델 목록
@@ -50,6 +60,11 @@ WEB_SEARCH_AGENT_SYSTEM_MESSAGE = """
 요청된 정보를 찾기 위해 search_web_tool을 사용하세요.
 검색 결과를 제공한 후, 계산이 필요한 경우 DataAnalystAgent에게 문의하세요.
 한 번에 하나의 검색만 수행하세요.
+
+**중요한 종료 규칙:**
+- 검색이 완료되면 즉시 "TERMINATE"라고 말하세요.
+- 같은 내용을 반복하지 마세요.
+- 인사말이나 감사 인사는 하지 마세요.
 """
 
 DEVIL_ADVOCATE_SYSTEM_MESSAGE = """
@@ -72,7 +87,12 @@ DATA_ANALYST_AGENT_SYSTEM_MESSAGE = """
 당신은 통계적 계산에 특화된 데이터 분석가입니다.
 데이터가 필요할 때는 WebSearchAgent에게 검색을 요청하세요.
 퍼센트 변화를 계산하기 위해 percentage_change_tool을 사용하세요.
-모든 계산을 완료한 후, 최종 요약을 제공하고 마지막 줄에 정확히 "TERMINATE"라고 말하세요.
+
+**중요한 종료 규칙:**
+- 모든 계산을 완료한 후, 최종 요약을 제공하고 마지막 줄에 정확히 "TERMINATE"라고 말하세요.
+- 같은 내용을 반복하지 마세요.
+- 인사말이나 감사 인사는 하지 마세요.
+- 작업이 완료되면 즉시 종료하세요.
 """
 
 ANALYSIS_AGENT_SYSTEM_MESSAGE = """

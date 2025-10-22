@@ -39,6 +39,7 @@ class BatchService:
         self.notion_client = get_notion_client()
         self.notion_batch_status = NotionBatchStatus()
         self.ai_service = AIService(db)
+        self._is_processing = False  # 동시 실행 방지 플래그
     
     def update_batch_status(self, notion_page_id: str, status: str, message: Optional[str] = None, last_run_at: Optional[datetime] = None) -> Dict[str, Any]:
         try:
@@ -195,45 +196,66 @@ class BatchService:
             notion_page_id (str): Notion 페이지 ID
         """
         try:
-            self.logger.info(f"배치 사이클 실행: {notion_page_id}")
-
-            # 투두리스트 동기화 (노션 -> DB)
-            self.notion_service.sync_notion_todos_to_db(notion_page_id)
-            
-            # pending 상태인 투두 항목들 조회
-            pending_todos = self.db.query(NotionTodo).filter(
-                NotionTodo.notion_page_id == notion_page_id,
-                NotionTodo.status == "pending",
-                NotionTodo.checked == "false"
-            ).all()
-            
-            if not pending_todos:
-                self.logger.info(f"처리할 pending 투두가 없습니다: {notion_page_id}")
+            # 동시 실행 방지 체크
+            if self._is_processing:
+                self.logger.warning(f"이미 배치 작업이 실행 중입니다. 건너뜁니다: {notion_page_id}")
                 return
+                
+            self.logger.info(f"배치 사이클 실행: {notion_page_id}")
             
-            # 각 투두 항목 처리
-            for todo in pending_todos:
-                try:
-                    # TODO: 실제 작업 로직 구현
-                    # 여기서는 간단히 상태를 done으로 변경
-                    self._process_todo_item(todo)
-                    
-                except Exception as e:
-                    self.logger.error(f"투두 처리 중 오류: {todo.block_id}, {str(e)}")
-                    # 개별 투두 처리 실패는 전체 배치를 중단시키지 않음
-                    continue
+            # 처리 중 플래그 설정
+            self._is_processing = True
             
-            # 배치 상태 업데이트
-            upsert_status(
-                self.db,
-                notion_page_id,
-                "running",
-                f"배치 작업 진행 중 - {len(pending_todos)}개 항목 처리",
-                datetime.utcnow()
-            )
+            try:
+                # 투두리스트 동기화 (노션 -> DB)
+                self.notion_service.sync_notion_todos_to_db(notion_page_id)
+                
+                # pending 상태인 투두 항목들 조회
+                pending_todos = self.db.query(NotionTodo).filter(
+                    NotionTodo.notion_page_id == notion_page_id,
+                    NotionTodo.status == "pending",
+                    NotionTodo.checked == "false"
+                ).all()
+                
+                if not pending_todos:
+                    self.logger.info(f"처리할 pending 투두가 없습니다: {notion_page_id}")
+                    return
+                
+                # 설정에서 배치 크기 가져오기
+                from src.core.config import QUEUE_BATCH_SIZE
+                max_concurrent = QUEUE_BATCH_SIZE
+                todos_to_process = pending_todos[:max_concurrent]
+                
+                self.logger.info(f"처리할 투두 {len(todos_to_process)}개 선택 (전체 {len(pending_todos)}개 중)")
+                
+                # 각 투두를 순차적으로 처리 (단순하게)
+                for i, todo in enumerate(todos_to_process):
+                    try:
+                        self.logger.info(f"투두 처리 중 ({i+1}/{len(todos_to_process)}): {todo.content[:50]}...")
+                        self._process_todo_item(todo)
+                        
+                    except Exception as e:
+                        self.logger.error(f"투두 처리 중 오류: {todo.block_id}, {str(e)}")
+                        # 개별 투두 처리 실패는 전체 배치를 중단시키지 않음
+                        continue
+                
+                # 배치 상태 업데이트
+                upsert_status(
+                    self.db,
+                    notion_page_id,
+                    "running",
+                    f"배치 작업 진행 중 - {len(todos_to_process)}개 항목 처리",
+                    datetime.utcnow()
+                )
+                
+            finally:
+                # 처리 완료 후 플래그 해제
+                self._is_processing = False
             
         except Exception as e:
             self.logger.error(f"배치 사이클 실행 중 오류: {str(e)}")
+            # 오류 발생 시에도 플래그 해제
+            self._is_processing = False
             # 배치 상태를 failed로 변경
             upsert_status(
                 self.db,
@@ -243,6 +265,7 @@ class BatchService:
                 datetime.utcnow()
             )
     
+
     def _process_todo_item(self, todo: NotionTodo):
         """
         개별 투두 항목을 처리합니다.
@@ -254,15 +277,20 @@ class BatchService:
             # AI Agent 랭그래프 호출해서 투두 내용을 처리
             self.logger.info(f"투두 라우팅 시작: {todo.content}")
             
+            # 배치별로 새로운 AI 서비스 인스턴스 생성 (팀 충돌 방지)
+            from src.services.ai_service import AIService
+            batch_ai_service = AIService(self.db)
+            
             # 팀 라우팅 실행 (비동기)
             import asyncio
-            result = asyncio.run(self.ai_service.route_todo_to_agent(todo))
+            result = asyncio.run(batch_ai_service.route_todo_to_agent(todo))
 
             print(f"투두 처리 결과: {result}")
 
             # AI 처리 결과를 Notion에 추가
             ai_summary = result.get('ai_result', 'AI 처리 완료')
-            completion_message = f"{todo.content} 투두 처리 결과:\n{ai_summary}"
+            url = result.get('url', '')
+            completion_message = f"{todo.content} 투두 처리 결과:\n{ai_summary}\n\n[상세 보기]({url})"
             
             append_result = append_completion_message(todo.block_id, completion_message)
             
@@ -270,7 +298,6 @@ class BatchService:
                 self.logger.info(f"Notion에 AI 처리 결과 추가 성공: {todo.block_id}")
             else:
                 self.logger.warning(f"Notion AI 결과 추가 실패: {append_result.get('message')}")
-
 
             # 투두 상태를 done으로 변경
             todo.status = "done"
