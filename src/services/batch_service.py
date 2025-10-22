@@ -290,7 +290,7 @@ class BatchService:
             # AI 처리 결과를 Notion에 추가
             ai_summary = result.get('ai_result', 'AI 처리 완료')
             url = result.get('url', '')
-            completion_message = f"{todo.content} 투두 처리 결과:\n{ai_summary}\n\n[상세 보기]({url})"
+            completion_message = f"{todo.content} 투두 처리 결과:\n{ai_summary}\n{url}"
             
             append_result = append_completion_message(todo.block_id, completion_message)
             
