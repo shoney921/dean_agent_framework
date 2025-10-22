@@ -36,12 +36,25 @@ def create_team(
     """
     termination = TextMentionTermination("TERMINATE") | MaxMessageTermination(max_messages=max_messages)
     
+    selector_prompt = """다음 작업을 수행할 에이전트를 선택하세요.
+
+    {roles}
+
+    현재 대화 맥락:
+    {history}
+
+    위 대화를 읽고, {participants} 중에서 다음 작업을 수행할 에이전트를 선택하세요.
+    다른 에이전트가 작업을 시작하기 전에 플래너 에이전트가 작업을 할당했는지 확인하세요.
+    한 명의 에이전트만 선택하세요.
+    """
+
     return SelectorGroupChat(
         participants=agents,
         termination_condition=termination,
         model_client=model_client,
+        selector_prompt=selector_prompt,
+        # allow_multiple_speaker=True,
     )
-
 
 def print_section_header(title: str) -> None:
     """섹션 헤더를 출력합니다."""
