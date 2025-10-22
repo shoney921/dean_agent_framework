@@ -200,7 +200,8 @@ class BatchService:
             # pending 상태인 투두 항목들 조회
             pending_todos = self.db.query(NotionTodo).filter(
                 NotionTodo.notion_page_id == notion_page_id,
-                NotionTodo.status == "pending"
+                NotionTodo.status == "pending",
+                NotionTodo.checked == "false"
             ).all()
             
             if not pending_todos:
@@ -247,13 +248,15 @@ class BatchService:
             todo (NotionTodo): 처리할 투두 항목
         """
         try:
+            # TODO AI Agent 랭그래프 호출해서 투두 내용을 처리
+            
+            # Notion API에 완료 메시지 추가
+            append_completion_message(todo.block_id, f"투두 처리 완료{todo.content}")
+
             # 투두 상태를 done으로 변경
             todo.status = "done"
             todo.updated_at = datetime.utcnow()
             self.db.commit()
-            
-            # Notion API에 완료 메시지 추가
-            append_completion_message(todo.block_id, "투두 처리 완료")
             
             self.logger.info(f"투두 처리 완료: {todo.block_id}")
             
