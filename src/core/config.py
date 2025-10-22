@@ -17,7 +17,9 @@ load_dotenv()
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
 NOTION_API_KEY = os.getenv("NOTION_API_KEY")
-DEFAULT_MODEL = "gemini-2.5-flash"
+# DEFAULT_MODEL = "gemini-2.5-flash"
+DEFAULT_MODEL = "gemini-2.5-flash-lite"
+# DEFAULT_MODEL = "gemini-2.0-flash"
 
 # ============================================================================
 # 시스템 제한 설정
