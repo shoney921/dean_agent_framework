@@ -14,7 +14,7 @@ load_dotenv()
 # API 키 및 모델 설정
 # ============================================================================
 
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "AIzaSyAsh2RsHqQxUMiMxEdNv6moXnw-jkAn0NU")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
 NOTION_API_KEY = os.getenv("NOTION_API_KEY")
 DEFAULT_MODEL = "gemini-2.5-flash"
