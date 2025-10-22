@@ -47,7 +47,7 @@ def create_devil_advocate_analyst_agent(model_client: OpenAIChatCompletionClient
     """
     return AssistantAgent(
         "DevilsAdvocateAnalyst",
-        description="악마의 대변인 관점에서 비판적 분석을 수행하는 에이전트입니다.",
+        description="악마의 대변인 관점에서 비판적 분석을 수행하는 에이전트입니다. 단순 검색 정보를 요구할때는 사용하지 않아도 됩니다.",
         model_client=model_client,
         system_message=DEVIL_ADVOCATE_SYSTEM_MESSAGE,
     )
