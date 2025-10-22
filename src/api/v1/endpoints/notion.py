@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 import re
 
 from src.api.deps import get_db
+from src.services.batch_service import BatchService
 from src.services.notion_service import NotionService
 from src.core.schemas import (
     NotionConnectionTest,
@@ -244,8 +245,9 @@ def update_batch_status(
     """
     특정 페이지의 배치 상태를 업데이트합니다.
     """
-    notion_service = NotionService(db)
-    result = notion_service.update_batch_status(notion_page_id, status, message)
+    batch_service = BatchService(db)
+    result = batch_service.update_batch_status(notion_page_id, status)
+    print(result)
     if not result["success"]:
         raise HTTPException(status_code=400, detail=result["message"])
     return result["status"]

@@ -18,9 +18,10 @@ from apscheduler.triggers.date import DateTrigger
 
 from src.core.models import NotionBatchStatus, NotionTodo
 from src.client.notion_client import get_notion_client
+from src.core.schemas import NotionBatchStatusRead
 from src.repositories.notion_batch_status import upsert_status, get_status
 
-
+from src.services.notion_service import NotionService
 class BatchService:
     """배치 서비스 클래스"""
     
@@ -32,6 +33,30 @@ class BatchService:
         
         # 실행 중인 배치 작업 추적
         self.running_batches: Dict[str, Dict[str, Any]] = {}
+        self.notion_service = NotionService(db)
+        self.notion_client = get_notion_client()
+        self.notion_batch_status = NotionBatchStatus()
+    
+    def update_batch_status(self, notion_page_id: str, status: str, message: Optional[str] = None, last_run_at: Optional[datetime] = None) -> Dict[str, Any]:
+        try:
+            row = upsert_status(self.db, notion_page_id, status, message, last_run_at)
+
+            if status == "running":
+                self.start_batch(notion_page_id)
+
+            if status == "idle":
+                self.stop_batch(notion_page_id)
+
+            return {
+                "success": True,
+                "status": NotionBatchStatusRead.model_validate(row)
+            }
+        except Exception as e:
+            self.db.rollback()
+            return {
+                "success": False,
+                "message": f"배치 상태 업데이트 중 오류가 발생했습니다: {str(e)}"
+            }
     
     def start_batch(self, notion_page_id: str) -> Dict[str, Any]:
         """
@@ -69,21 +94,19 @@ class BatchService:
             }
             self.running_batches[notion_page_id] = batch_info
             
-            # 1분 주기로 배치 작업 실행
             job_id = f"batch_{notion_page_id}"
             self.scheduler.add_job(
                 func=self._execute_batch_cycle,
-                trigger=IntervalTrigger(minutes=1),
+                trigger=IntervalTrigger(seconds=30), #스케줄 주기
                 args=[notion_page_id],
                 id=job_id,
                 replace_existing=True
             )
             
-            # 15분 후 배치 종료 스케줄
-            end_time = datetime.utcnow() + timedelta(minutes=15)
+            end_time = datetime.utcnow() + timedelta(minutes=3)
             self.scheduler.add_job(
                 func=self.stop_batch,
-                trigger=DateTrigger(run_date=end_time),
+                trigger=DateTrigger(run_date=end_time), #배치 종료 시간
                 args=[notion_page_id],
                 id=f"batch_end_{notion_page_id}",
                 replace_existing=True
@@ -170,6 +193,9 @@ class BatchService:
         """
         try:
             self.logger.info(f"배치 사이클 실행: {notion_page_id}")
+
+            # 투두리스트 동기화 (노션 -> DB)
+            self.notion_service.sync_notion_todos_to_db(notion_page_id)
             
             # pending 상태인 투두 항목들 조회
             pending_todos = self.db.query(NotionTodo).filter(

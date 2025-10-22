@@ -18,7 +18,6 @@ from src.core.models import NotionBatchStatus, NotionTodo
 from src.core.schemas import NotionConnectionTest, NotionPageListResponse, NotionBatchStatusRead, NotionTodoRead
 from src.repositories.notion_batch_status import get_status_map_by_page_ids, upsert_status, get_status
 
-
 class NotionService:
     """Notion 서비스 클래스"""
     
@@ -147,25 +146,6 @@ class NotionService:
                 pages=[],
                 message=f"페이지 목록 조회 중 오류가 발생했습니다: {str(e)}"
             )
-
-    def update_batch_status(self, notion_page_id: str, status: str, message: Optional[str] = None, last_run_at: Optional[datetime] = None) -> Dict[str, Any]:
-        try:
-            row = upsert_status(self.db, notion_page_id, status, message, last_run_at)
-
-            # 투두리스트 동기화
-            if status == "running":
-                self.sync_notion_todos_to_db(notion_page_id)
-
-            return {
-                "success": True,
-                "status": NotionBatchStatusRead.model_validate(row)
-            }
-        except Exception as e:
-            self.db.rollback()
-            return {
-                "success": False,
-                "message": f"배치 상태 업데이트 중 오류가 발생했습니다: {str(e)}"
-            }
     
     def get_notion_client_todos_from_page(self, notion_page_id: str) -> Dict[str, Any]:
         """
