@@ -38,11 +38,6 @@ class BackendAPIClient:
         resp.raise_for_status()
         return resp.json()
 
-    def get_run_full(self, run_id: int) -> Dict[str, Any]:
-        resp = self.session.get(f"{self.base_url}/runs/{run_id}/full", timeout=15)
-        resp.raise_for_status()
-        return resp.json()
-
     # --------------------------- Messages ---------------------------------
     def list_messages_by_run(self, run_id: int | str) -> List[Dict[str, Any]]:
         # run_id를 정수로 변환
@@ -57,13 +52,6 @@ class BackendAPIClient:
         return resp.json()
 
     # --------------------------- Notion ---------------------------------
-    def test_notion_connection(self, api_key: Optional[str] = None) -> Dict[str, Any]:
-        """Notion API 연결을 테스트합니다."""
-        data = {"api_key": api_key} if api_key else {}
-        resp = self.session.post(f"{self.notion_base_url}/test-connection", json=data, timeout=15)
-        resp.raise_for_status()
-        return resp.json()
-
     def get_notion_pages_list(
         self, 
         page_size: int = 100, 
@@ -80,26 +68,6 @@ class BackendAPIClient:
         resp.raise_for_status()
         return resp.json()
 
-    def register_notion_page_for_ai_batch(
-        self,
-        notion_page_id: str,
-        title: str,
-        url: Optional[str] = None,
-        parent_page_id: Optional[str] = None,
-        is_active: str = "true"
-    ) -> Dict[str, Any]:
-        """AI 배치 동작할 Notion 페이지를 등록합니다."""
-        data = {
-            "notion_page_id": notion_page_id,
-            "title": title,
-            "url": url,
-            "parent_page_id": parent_page_id,
-            "is_active": is_active
-        }
-        resp = self.session.post(f"{self.notion_base_url}/pages/register", json=data, timeout=15)
-        resp.raise_for_status()
-        return resp.json()
-
     def get_registered_pages(self) -> List[Dict[str, Any]]:
         """등록된 Notion 페이지 목록을 조회합니다."""
         resp = self.session.get(f"{self.notion_base_url}/pages/registered", timeout=15)
@@ -109,24 +77,6 @@ class BackendAPIClient:
     def get_active_pages(self) -> List[Dict[str, Any]]:
         """활성화된 Notion 페이지 목록을 조회합니다."""
         resp = self.session.get(f"{self.notion_base_url}/pages/active", timeout=15)
-        resp.raise_for_status()
-        return resp.json()
-
-    def get_notion_todos_from_page(self, notion_page_id: str) -> Dict[str, Any]:
-        """특정 Notion 페이지의 투두리스트를 조회합니다."""
-        resp = self.session.get(f"{self.notion_base_url}/pages/{notion_page_id}/todos", timeout=15)
-        resp.raise_for_status()
-        return resp.json()
-
-    def sync_notion_todos_to_db(self, notion_page_id: str) -> Dict[str, Any]:
-        """Notion 페이지의 투두리스트를 데이터베이스에 동기화합니다."""
-        resp = self.session.post(f"{self.notion_base_url}/pages/{notion_page_id}/todos/sync", timeout=15)
-        resp.raise_for_status()
-        return resp.json()
-
-    def get_page_todos_from_db(self, notion_page_id: str) -> List[Dict[str, Any]]:
-        """데이터베이스에서 특정 페이지의 투두리스트를 조회합니다."""
-        resp = self.session.get(f"{self.notion_base_url}/pages/{notion_page_id}/todos/db", timeout=15)
         resp.raise_for_status()
         return resp.json()
 
