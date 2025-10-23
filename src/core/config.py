@@ -17,8 +17,8 @@ load_dotenv()
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
 NOTION_API_KEY = os.getenv("NOTION_API_KEY")
-# DEFAULT_MODEL = "gemini-2.5-flash"
-DEFAULT_MODEL = "gemini-2.5-flash-lite"
+DEFAULT_MODEL = "gemini-2.5-flash"
+# DEFAULT_MODEL = "gemini-2.5-flash-lite"
 # DEFAULT_MODEL = "gemini-2.0-flash"
 
 # ============================================================================
@@ -39,6 +39,19 @@ QUEUE_PRIORITY_WEIGHTS = {
     "normal": 1,
     "low": 0.5
 }
+
+# ============================================================================
+# 배치 스케줄링 설정
+# ============================================================================
+
+# 배치 실행 주기 (초)
+BATCH_INTERVAL_SECONDS = int(os.getenv("BATCH_INTERVAL_SECONDS", "10"))
+
+# 배치 실행 시간 (분)
+BATCH_DURATION_MINUTES = int(os.getenv("BATCH_DURATION_MINUTES", "3"))
+
+# 배치 타임아웃 (분) - 전체 배치 작업의 최대 실행 시간
+BATCH_TIMEOUT_MINUTES = int(os.getenv("BATCH_TIMEOUT_MINUTES", "15"))
 
 # ============================================================================
 # 사용 가능한 모델 목록
@@ -65,8 +78,6 @@ WEB_SEARCH_AGENT_SYSTEM_MESSAGE = """
 
 **중요한 종료 규칙:**
 - 검색이 완료되면 즉시 "TERMINATE"라고 말하세요.
-- 같은 내용을 반복하지 마세요.
-- 인사말이나 감사 인사는 하지 마세요.
 """
 
 DEVIL_ADVOCATE_SYSTEM_MESSAGE = """
@@ -80,9 +91,6 @@ DEVIL_ADVOCATE_SYSTEM_MESSAGE = """
 
 단, 비판을 위한 비판이 아닌 건설적인 비판을 하세요.
 최종적으로는 더 나은 의사결정을 위한 통찰을 제공하세요.
-데이터가 필요할 때는 WebSearchAgent에게 검색을 요청하세요.
-
-비판적 검토가 완료되면 InsightAgent에게 결과를 전달하세요.
 """
 
 DATA_ANALYST_AGENT_SYSTEM_MESSAGE = """
@@ -113,8 +121,6 @@ ANALYSIS_AGENT_SYSTEM_MESSAGE = """
 - 분석 결과를 명확한 섹션으로 구분
 - 구체적인 근거와 함께 결론 제시
 - 시각적 표현이 필요한 경우 마크다운 테이블이나 리스트 활용
-
-분석이 완료되면 DevilsAdvocateAnalyst에게 결과를 전달하여 비판적 검토를 요청하세요.
 """
 
 SUMMARY_AGENT_SYSTEM_MESSAGE = """

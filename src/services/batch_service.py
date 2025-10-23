@@ -17,7 +17,8 @@ from apscheduler.triggers.interval import IntervalTrigger
 from apscheduler.triggers.date import DateTrigger
 
 from src.core.models import NotionBatchStatus, NotionTodo
-from src.client.notion_client import get_notion_client, append_completion_message
+from src.core.config import BATCH_INTERVAL_SECONDS, BATCH_DURATION_MINUTES, BATCH_TIMEOUT_MINUTES
+from src.client.notion_client import get_notion_client, append_completion_message, append_completion_message_with_toggle
 from src.core.schemas import NotionBatchStatusRead
 from src.repositories.notion_batch_status import upsert_status, get_status
 
@@ -93,7 +94,7 @@ class BatchService:
             batch_info = {
                 "notion_page_id": notion_page_id,
                 "start_time": datetime.utcnow(),
-                "end_time": datetime.utcnow() + timedelta(minutes=15),
+                "end_time": datetime.utcnow() + timedelta(minutes=BATCH_TIMEOUT_MINUTES),
                 "status": "running"
             }
             self.running_batches[notion_page_id] = batch_info
@@ -101,13 +102,13 @@ class BatchService:
             job_id = f"batch_{notion_page_id}"
             self.scheduler.add_job(
                 func=self._execute_batch_cycle,
-                trigger=IntervalTrigger(seconds=30), #스케줄 주기
+                trigger=IntervalTrigger(seconds=BATCH_INTERVAL_SECONDS), #스케줄 주기
                 args=[notion_page_id],
                 id=job_id,
                 replace_existing=True
             )
             
-            end_time = datetime.utcnow() + timedelta(minutes=3)
+            end_time = datetime.utcnow() + timedelta(minutes=BATCH_DURATION_MINUTES)
             self.scheduler.add_job(
                 func=self.stop_batch,
                 trigger=DateTrigger(run_date=end_time), #배치 종료 시간
@@ -281,9 +282,21 @@ class BatchService:
             from src.services.ai_service import AIService
             batch_ai_service = AIService(self.db)
             
-            # 팀 라우팅 실행 (비동기)
+            # 팀 라우팅 실행 (비동기) - 더 안전한 처리
             import asyncio
-            result = asyncio.run(batch_ai_service.route_todo_to_agent(todo))
+            try:
+                # 새로운 이벤트 루프 생성 (기존 루프와 충돌 방지)
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                result = loop.run_until_complete(batch_ai_service.route_todo_to_agent(todo))
+                loop.close()
+            except Exception as ai_error:
+                self.logger.error(f"AI 처리 중 오류: {ai_error}")
+                result = {
+                    "success": False,
+                    "ai_result": f"AI 처리 중 오류 발생: {str(ai_error)}",
+                    "url": ""
+                }
 
             print(f"투두 처리 결과: {result}")
 
@@ -292,12 +305,16 @@ class BatchService:
             url = result.get('url', '')
             completion_message = f"{todo.content} 투두 처리 결과:\n{ai_summary}\n{url}"
             
-            append_result = append_completion_message(todo.block_id, completion_message)
-            
-            if append_result.get('success'):
-                self.logger.info(f"Notion에 AI 처리 결과 추가 성공: {todo.block_id}")
-            else:
-                self.logger.warning(f"Notion AI 결과 추가 실패: {append_result.get('message')}")
+            try:
+                # append_result = append_completion_message(todo.block_id, completion_message)
+                append_result = append_completion_message_with_toggle(todo.block_id, completion_message)
+                
+                if append_result.get('success'):
+                    self.logger.info(f"Notion에 AI 처리 결과 추가 성공: {todo.block_id}")
+                else:
+                    self.logger.warning(f"Notion AI 결과 추가 실패: {append_result.get('message')}")
+            except Exception as notion_error:
+                self.logger.error(f"Notion 업데이트 중 오류: {notion_error}")
 
             # 투두 상태를 done으로 변경
             todo.status = "done"
@@ -308,7 +325,13 @@ class BatchService:
             
         except Exception as e:
             self.logger.error(f"투두 처리 실패: {todo.block_id}, {str(e)}")
-            raise
+            # 개별 투두 실패는 전체 배치를 중단시키지 않음
+            try:
+                todo.status = "failed"
+                todo.updated_at = datetime.utcnow()
+                self.db.commit()
+            except Exception as db_error:
+                self.logger.error(f"DB 업데이트 실패: {db_error}")
     
     def _add_completion_message_to_notion(self, notion_page_id: str, block_id: str):
         """
