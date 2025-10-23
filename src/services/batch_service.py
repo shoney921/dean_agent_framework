@@ -25,43 +25,32 @@ from src.repositories.notion_batch_status import upsert_status, get_status
 from src.services.ai_service import AIService
 from src.services.notion_service import NotionService
 
+# 전역 변수로 배치 상태 관리
+_global_running_batches: Dict[str, Dict[str, Any]] = {}
+_global_scheduler = None
+
 class BatchService:
     """배치 서비스 클래스"""
     
     def __init__(self, db: Session):
         self.db = db
-        self.scheduler = BackgroundScheduler()
-        self.scheduler.start()
         self.logger = logging.getLogger(__name__)
         
-        # 실행 중인 배치 작업 추적
-        self.running_batches: Dict[str, Dict[str, Any]] = {}
+        # 전역 변수 사용
+        global _global_scheduler, _global_running_batches
+        
+        if _global_scheduler is None:
+            _global_scheduler = BackgroundScheduler()
+            _global_scheduler.start()
+        
+        self.scheduler = _global_scheduler
+        self.running_batches = _global_running_batches
+        
         self.notion_service = NotionService(db)
         self.notion_client = get_notion_client()
         self.notion_batch_status = NotionBatchStatus()
         self.ai_service = AIService(db)
         self._is_processing = False  # 동시 실행 방지 플래그
-    
-    def update_batch_status(self, notion_page_id: str, status: str, message: Optional[str] = None, last_run_at: Optional[datetime] = None) -> Dict[str, Any]:
-        try:
-            row = upsert_status(self.db, notion_page_id, status, message, last_run_at)
-
-            if status == "running":
-                self.start_batch(notion_page_id)
-
-            if status == "idle":
-                self.stop_batch(notion_page_id)
-
-            return {
-                "success": True,
-                "status": NotionBatchStatusRead.model_validate(row)
-            }
-        except Exception as e:
-            self.db.rollback()
-            return {
-                "success": False,
-                "message": f"배치 상태 업데이트 중 오류가 발생했습니다: {str(e)}"
-            }
     
     def start_batch(self, notion_page_id: str) -> Dict[str, Any]:
         """
@@ -74,12 +63,9 @@ class BatchService:
             Dict: 시작 결과
         """
         try:
-            # 이미 실행 중인 배치가 있는지 확인
-            if notion_page_id in self.running_batches:
-                return {
-                    "success": False,
-                    "message": f"페이지 {notion_page_id}의 배치가 이미 실행 중입니다."
-                }
+            # 디버깅: 배치 시작 전 상태 출력
+            self.logger.info(f"배치 시작 요청: {notion_page_id}")
+            self.logger.info(f"현재 실행 중인 배치: {list(self.running_batches.keys())}")
             
             # 배치 상태를 running으로 변경
             upsert_status(
@@ -98,6 +84,10 @@ class BatchService:
                 "status": "running"
             }
             self.running_batches[notion_page_id] = batch_info
+            
+            # 디버깅: 배치 시작 후 상태 출력
+            print(f"배치 시작 완료: {notion_page_id}")
+            print(f"업데이트된 실행 중인 배치: {list(self.running_batches.keys())}")
             
             job_id = f"batch_{notion_page_id}"
             self.scheduler.add_job(
@@ -145,11 +135,15 @@ class BatchService:
             Dict: 중지 결과
         """
         try:
+            # 디버깅: 현재 실행 중인 배치 목록 출력
+            self.logger.info(f"현재 실행 중인 배치: {list(self.running_batches.keys())}")
+            self.logger.info(f"요청된 페이지 ID: {notion_page_id}")
+            
             # 실행 중인 배치가 있는지 확인
             if notion_page_id not in self.running_batches:
                 return {
                     "success": False,
-                    "message": f"페이지 {notion_page_id}의 배치가 실행 중이 아닙니다."
+                    "message": f"페이지 {notion_page_id}의 배치가 실행 중이 아닙니다. 현재 실행 중인 배치: {list(self.running_batches.keys())}"
                 }
             
             # 스케줄러에서 작업 제거
@@ -202,7 +196,7 @@ class BatchService:
                 self.logger.warning(f"이미 배치 작업이 실행 중입니다. 건너뜁니다: {notion_page_id}")
                 return
                 
-            self.logger.info(f"배치 사이클 실행: {notion_page_id}")
+            print(f"배치 사이클 실행: {notion_page_id}")
             
             # 처리 중 플래그 설정
             self._is_processing = True
