@@ -11,7 +11,9 @@ import atexit
 from pathlib import Path
 
 from src.api.v1.api import api_router
-from src.core.db import init_db
+from src.core.db import init_db, get_db
+from src.repositories.notion_batch_status import upsert_status
+from datetime import datetime
 
 # 데이터베이스 초기화
 from contextlib import asynccontextmanager
@@ -21,6 +23,26 @@ async def lifespan(app: FastAPI):
     """애플리케이션 생명주기 관리"""
     # 시작 시 실행
     init_db()
+    
+    # 배치 상태를 idle로 초기화
+    try:
+        db = next(get_db())
+        from src.core.models import NotionBatchStatus
+        
+        # 모든 배치 상태를 idle로 초기화
+        batch_statuses = db.query(NotionBatchStatus).all()
+        for status in batch_statuses:
+            status.status = "idle"
+            status.message = "애플리케이션 시작으로 인한 초기화"
+            status.updated_at = datetime.utcnow()
+        
+        db.commit()
+        print(f"✅ {len(batch_statuses)}개의 배치 상태가 'idle'로 초기화되었습니다.")
+    except Exception as e:
+        print(f"⚠️ 배치 상태 초기화 중 오류: {e}")
+    finally:
+        db.close()
+    
     yield
     # 종료 시 실행 (필요시)
     pass
