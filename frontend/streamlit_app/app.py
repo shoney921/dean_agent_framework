@@ -54,7 +54,7 @@ def main():
 
 def show_home_content():
     """홈페이지 내용 표시"""
-    st.title("🏠 홈 - 시스템 모니터링")
+    st.title("배치 시스템 모니터링")
     st.markdown("---")
     
     # API 클라이언트 초기화
@@ -96,6 +96,119 @@ def show_home_content():
         )
     
     st.markdown("---")
+
+    col1, col2 = st.columns(2)
+    with col1:
+        # 상태별 차트
+        st.subheader("📈 실행 상태 분포")
+        
+        try:
+            all_runs = client.list_runs(limit=100)
+            if all_runs:
+                df = pd.DataFrame(all_runs)
+                
+                # 상태별 카운트
+                status_counts = df['status'].value_counts() if 'status' in df.columns else pd.Series()
+                
+                if not status_counts.empty:
+                    if PLOTLY_AVAILABLE:
+                        # 파이 차트
+                        fig = px.pie(
+                            values=status_counts.values,
+                            names=status_counts.index,
+                            # title="실행 상태 분포",
+                            color_discrete_sequence=px.colors.qualitative.Set3
+                        )
+                        st.plotly_chart(fig, use_container_width=True)
+                    else:
+                        # plotly가 없을 때는 테이블로 표시
+                        st.markdown("**실행 상태 분포**")
+                        status_df = pd.DataFrame({
+                            '상태': status_counts.index,
+                            '개수': status_counts.values,
+                            '비율(%)': (status_counts.values / status_counts.sum() * 100).round(1)
+                        })
+                        st.dataframe(status_df, use_container_width=True, hide_index=True)
+                else:
+                    st.info("상태 데이터가 없습니다.")
+            else:
+                st.info("차트를 그릴 데이터가 없습니다.")
+                
+        except Exception as e:
+            st.error(f"차트 생성 실패: {str(e)}")
+    with col2:
+        # 시간대별 실행 트렌드
+        st.subheader("🗓️ 일별 실행 추세")
+        
+        try:
+            all_runs = client.list_runs(limit=200)
+            if all_runs:
+                df = pd.DataFrame(all_runs)
+                
+                if 'started_at' in df.columns:
+                    # 날짜 변환
+                    df['started_at'] = pd.to_datetime(df['started_at'])
+                    df['date'] = df['started_at'].dt.date
+                    
+                    # 일별 카운트
+                    daily_counts = df.groupby('date').size().reset_index(name='count')
+                    
+                    if PLOTLY_AVAILABLE:
+                        # 라인 차트
+                        fig = px.line(
+                            daily_counts,
+                            x='date',
+                            y='count',
+                            # title="일별 실행 횟수",
+                            markers=True
+                        )
+                        fig.update_layout(
+                            xaxis_title="날짜",
+                            yaxis_title="실행 횟수"
+                        )
+                        st.plotly_chart(fig, use_container_width=True)
+                    else:
+                        # plotly가 없을 때는 테이블로 표시
+                        st.markdown("**일별 실행 횟수**")
+                        daily_counts['날짜'] = daily_counts['date']
+                        daily_counts['실행 횟수'] = daily_counts['count']
+                        display_df = daily_counts[['날짜', '실행 횟수']].sort_values('날짜')
+                        st.dataframe(display_df, use_container_width=True, hide_index=True)
+                else:
+                    st.info("시작 시간 데이터가 없습니다.")
+            else:
+                st.info("트렌드 차트를 그릴 데이터가 없습니다.")
+                
+        except Exception as e:
+            st.error(f"트렌드 차트 생성 실패: {str(e)}")
+
+    st.markdown("---")
+
+    # 팀별 통계
+    st.subheader("👥 팀별 통계")
+    
+    try:
+        all_runs = client.list_runs(limit=100)
+        if all_runs:
+            df = pd.DataFrame(all_runs)
+            
+            if 'team_name' in df.columns:
+                team_stats = df.groupby('team_name').agg({
+                    'id': 'count',
+                    'status': lambda x: (x == 'completed').sum()
+                }).reset_index()
+                team_stats.columns = ['팀명', '총 실행', '완료']
+                team_stats['완료율'] = (team_stats['완료'] / team_stats['총 실행'] * 100).round(1)
+                
+                st.dataframe(team_stats, use_container_width=True, hide_index=True)
+            else:
+                st.info("팀 정보가 없습니다.")
+        else:
+            st.info("팀 통계 데이터가 없습니다.")
+            
+    except Exception as e:
+        st.error(f"팀 통계 조회 실패: {str(e)}")
+
     
     # 최근 실행 기록
     st.subheader("📊 최근 실행 기록")
@@ -124,113 +237,6 @@ def show_home_content():
     except Exception as e:
         st.error(f"실행 기록 조회 실패: {str(e)}")
     
-    # 상태별 차트
-    st.subheader("📈 실행 상태 분포")
-    
-    try:
-        all_runs = client.list_runs(limit=100)
-        if all_runs:
-            df = pd.DataFrame(all_runs)
-            
-            # 상태별 카운트
-            status_counts = df['status'].value_counts() if 'status' in df.columns else pd.Series()
-            
-            if not status_counts.empty:
-                if PLOTLY_AVAILABLE:
-                    # 파이 차트
-                    fig = px.pie(
-                        values=status_counts.values,
-                        names=status_counts.index,
-                        title="실행 상태 분포",
-                        color_discrete_sequence=px.colors.qualitative.Set3
-                    )
-                    st.plotly_chart(fig, use_container_width=True)
-                else:
-                    # plotly가 없을 때는 테이블로 표시
-                    st.markdown("**실행 상태 분포**")
-                    status_df = pd.DataFrame({
-                        '상태': status_counts.index,
-                        '개수': status_counts.values,
-                        '비율(%)': (status_counts.values / status_counts.sum() * 100).round(1)
-                    })
-                    st.dataframe(status_df, use_container_width=True, hide_index=True)
-            else:
-                st.info("상태 데이터가 없습니다.")
-        else:
-            st.info("차트를 그릴 데이터가 없습니다.")
-            
-    except Exception as e:
-        st.error(f"차트 생성 실패: {str(e)}")
-    
-    # 시간대별 실행 트렌드
-    st.subheader("⏰ 시간대별 실행 트렌드")
-    
-    try:
-        all_runs = client.list_runs(limit=200)
-        if all_runs:
-            df = pd.DataFrame(all_runs)
-            
-            if 'started_at' in df.columns:
-                # 날짜 변환
-                df['started_at'] = pd.to_datetime(df['started_at'])
-                df['date'] = df['started_at'].dt.date
-                
-                # 일별 카운트
-                daily_counts = df.groupby('date').size().reset_index(name='count')
-                
-                if PLOTLY_AVAILABLE:
-                    # 라인 차트
-                    fig = px.line(
-                        daily_counts,
-                        x='date',
-                        y='count',
-                        title="일별 실행 횟수",
-                        markers=True
-                    )
-                    fig.update_layout(
-                        xaxis_title="날짜",
-                        yaxis_title="실행 횟수"
-                    )
-                    st.plotly_chart(fig, use_container_width=True)
-                else:
-                    # plotly가 없을 때는 테이블로 표시
-                    st.markdown("**일별 실행 횟수**")
-                    daily_counts['날짜'] = daily_counts['date']
-                    daily_counts['실행 횟수'] = daily_counts['count']
-                    display_df = daily_counts[['날짜', '실행 횟수']].sort_values('날짜')
-                    st.dataframe(display_df, use_container_width=True, hide_index=True)
-            else:
-                st.info("시작 시간 데이터가 없습니다.")
-        else:
-            st.info("트렌드 차트를 그릴 데이터가 없습니다.")
-            
-    except Exception as e:
-        st.error(f"트렌드 차트 생성 실패: {str(e)}")
-    
-    # 팀별 통계
-    st.subheader("👥 팀별 통계")
-    
-    try:
-        all_runs = client.list_runs(limit=100)
-        if all_runs:
-            df = pd.DataFrame(all_runs)
-            
-            if 'team_name' in df.columns:
-                team_stats = df.groupby('team_name').agg({
-                    'id': 'count',
-                    'status': lambda x: (x == 'completed').sum()
-                }).reset_index()
-                team_stats.columns = ['팀명', '총 실행', '완료']
-                team_stats['완료율'] = (team_stats['완료'] / team_stats['총 실행'] * 100).round(1)
-                
-                st.dataframe(team_stats, use_container_width=True, hide_index=True)
-            else:
-                st.info("팀 정보가 없습니다.")
-        else:
-            st.info("팀 통계 데이터가 없습니다.")
-            
-    except Exception as e:
-        st.error(f"팀 통계 조회 실패: {str(e)}")
 
 
 def get_active_runs_count(client: BackendAPIClient) -> int:
