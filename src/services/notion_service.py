@@ -149,7 +149,7 @@ class NotionService:
     
     def get_notion_client_todos_from_page(self, notion_page_id: str) -> Dict[str, Any]:
         """
-        특정 Notion 페이지의 투두리스트 항목들을 조회합니다.
+        특정 Notion 페이지의 투두리스트 항목들을 조회합니다. (checked가 false인 경우만)
         
         Args:
             notion_page_id (str): Notion 페이지 ID
@@ -171,7 +171,7 @@ class NotionService:
             # 투두 블록만 필터링
             todos = []
             for block in page_result.get("blocks", []):
-                if block.get("type") == "to_do":
+                if block.get("type") == "to_do" and block.get("checked", False) == False:
                     todo_data = {
                         "block_id": block.get("block_id", ""),
                         "content": block.get("content", ""),
