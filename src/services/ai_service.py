@@ -4,6 +4,20 @@
 import asyncio
 from typing import List, Dict, Any
 from requests import Session
+import urllib3
+import requests
+
+# ============================================================================
+# 전역 SSL 검증 비활성화 설정
+# ============================================================================
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+# requests 라이브러리의 모든 요청에 verify=False 자동 적용
+_original_request = requests.Session.request
+def _patched_request(self, *args, **kwargs):
+    """모든 requests 요청에 자동으로 verify=False를 적용"""
+    kwargs['verify'] = False
+    return _original_request(self, *args, **kwargs)
+requests.Session.request = _patched_request
 
 from src.ai.agents.analysis_agent import create_devil_advocate_analyst_agent
 from src.ai.agents.base import create_model_client
