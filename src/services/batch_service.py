@@ -165,7 +165,7 @@ class BatchService:
             upsert_status(
                 self.db, 
                 notion_page_id, 
-                "completed", 
+                "idle", 
                 "배치 작업이 정상적으로 완료되었습니다.",
                 datetime.utcnow()
             )
