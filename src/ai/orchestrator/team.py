@@ -129,7 +129,8 @@ async def run_team_task(
                             break
                     
                     # 마지막 메시지를 최종 결과로 저장
-                    final_result = content
+                    if not content == "TERMINATE":
+                        final_result = content  
 
                     msg_repo.add(
                         run_id=run_id,
