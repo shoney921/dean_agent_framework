@@ -865,3 +865,276 @@ def append_completion_message(block_id: str, completion_text: str = None) -> dic
             "message": f"완료 메시지 추가 중 오류가 발생했습니다: {str(e)}"
         }
 
+def parse_rich_text_formatting(text: str) -> list:
+    """
+    텍스트에서 마크다운 포맷팅을 파싱하여 Notion rich_text 형식으로 변환합니다.
+    
+    Args:
+        text (str): 마크다운 텍스트
+        
+    Returns:
+        list: Notion rich_text 배열
+    """
+    import re
+    
+    rich_text = []
+    current_pos = 0
+    
+    # 정규식 패턴들
+    patterns = [
+        (r'\*\*(.*?)\*\*', 'bold'),      # **볼드**
+        (r'\*(.*?)\*', 'italic'),        # *이탤릭*
+        (r'`(.*?)`', 'code'),            # `코드`
+        (r'~~(.*?)~~', 'strikethrough'), # ~~취소선~~
+    ]
+    
+    # 모든 매치 찾기
+    matches = []
+    for pattern, format_type in patterns:
+        for match in re.finditer(pattern, text):
+            matches.append((match.start(), match.end(), match.group(1), format_type))
+    
+    # 위치순으로 정렬
+    matches.sort(key=lambda x: x[0])
+    
+    for start, end, content, format_type in matches:
+        # 매치 전 텍스트 추가
+        if current_pos < start:
+            plain_text = text[current_pos:start]
+            if plain_text:
+                rich_text.append({"type": "text", "text": {"content": plain_text}})
+        
+        # 포맷된 텍스트 추가
+        annotations = {}
+        if format_type == 'bold':
+            annotations['bold'] = True
+        elif format_type == 'italic':
+            annotations['italic'] = True
+        elif format_type == 'code':
+            annotations['code'] = True
+        elif format_type == 'strikethrough':
+            annotations['strikethrough'] = True
+        
+        rich_text.append({
+            "type": "text",
+            "text": {"content": content},
+            "annotations": annotations
+        })
+        
+        current_pos = end
+    
+    # 남은 텍스트 추가
+    if current_pos < len(text):
+        remaining_text = text[current_pos:]
+        if remaining_text:
+            rich_text.append({"type": "text", "text": {"content": remaining_text}})
+    
+    # 매치가 없으면 전체 텍스트를 그대로 반환
+    if not matches:
+        return [{"type": "text", "text": {"content": text}}]
+    
+    return rich_text
+
+
+def parse_markdown_to_notion_blocks(text: str) -> list:
+    """
+    마크다운 텍스트를 Notion 블록으로 변환합니다.
+    
+    Args:
+        text (str): 마크다운 텍스트
+        
+    Returns:
+        list: Notion 블록 리스트
+    """
+    import re
+    
+    blocks = []
+    lines = text.split('\n')
+    i = 0
+    
+    while i < len(lines):
+        line = lines[i].strip()
+        
+        if not line:
+            i += 1
+            continue
+            
+        # 헤딩 처리
+        if line.startswith('### ') or line.startswith('#### '):
+            content = line[4:]
+            rich_text = parse_rich_text_formatting(content)
+            blocks.append({
+                "type": "heading_3",
+                "heading_3": {
+                    "rich_text": rich_text
+                }
+            })
+        elif line.startswith('## '):
+            content = line[3:]
+            rich_text = parse_rich_text_formatting(content)
+            blocks.append({
+                "type": "heading_2", 
+                "heading_2": {
+                    "rich_text": rich_text
+                }
+            })
+        elif line.startswith('# '):
+            content = line[2:]
+            rich_text = parse_rich_text_formatting(content)
+            blocks.append({
+                "type": "heading_1",
+                "heading_1": {
+                    "rich_text": rich_text
+                }
+            })
+        # 불릿 포인트 처리
+        elif line.startswith('- ') or line.startswith('* '):
+            content = line[2:]
+            rich_text = parse_rich_text_formatting(content)
+            blocks.append({
+                "type": "bulleted_list_item",
+                "bulleted_list_item": {
+                    "rich_text": rich_text
+                }
+            })
+        # 번호 리스트 처리
+        elif re.match(r'^\d+\. ', line):
+            content = re.sub(r'^\d+\. ', '', line)
+            rich_text = parse_rich_text_formatting(content)
+            blocks.append({
+                "type": "numbered_list_item",
+                "numbered_list_item": {
+                    "rich_text": rich_text
+                }
+            })
+        # 구분선 처리
+        elif line == '---' or line == '***' or line == '___':
+            blocks.append({
+                "type": "divider",
+                "divider": {}
+            })
+        # 코드 블록 처리
+        elif line.startswith('```'):
+            # 코드 블록 시작
+            language = line[3:].strip() or "plain text"
+            code_content = []
+            i += 1
+            while i < len(lines) and not lines[i].strip().startswith('```'):
+                code_content.append(lines[i])
+                i += 1
+            blocks.append({
+                "type": "code",
+                "code": {
+                    "rich_text": [{"type": "text", "text": {"content": '\n'.join(code_content)}}],
+                    "language": language
+                }
+            })
+        # 일반 텍스트 처리
+        else:
+            rich_text = parse_rich_text_formatting(line)
+            blocks.append({
+                "type": "paragraph",
+                "paragraph": {
+                    "rich_text": rich_text
+                }
+            })
+        
+        i += 1
+    
+    return blocks
+
+
+def append_completion_message_with_toggle(block_id: str, toggle_title: str, url: str, completion_text: str = None) -> dict:
+    """
+    Notion 블록 아래에 완료 메시지를 토글 형태로 추가합니다.
+    마크다운 헤딩(## 제목)과 포맷팅을 지원합니다.
+    
+    Args:
+        block_id (str): 완료 메시지를 추가할 블록 ID
+        completion_text (str, optional): 사용자 정의 완료 메시지. 없으면 기본 메시지 사용
+        
+    Returns:
+        dict: API 응답 결과
+    """
+    try:
+        if not completion_text:
+            completion_text = f" 작업 완료: {datetime.datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')}"
+        
+        # 마크다운을 Notion 블록으로 변환
+        notion_blocks = parse_markdown_to_notion_blocks(completion_text)
+        
+        # # URL이 있으면 링크 블록 추가
+        # if url:
+        #     notion_blocks.append({
+        #         "type": "paragraph",
+        #         "paragraph": {
+        #             "rich_text": [
+        #                 {
+        #                     "type": "text",
+        #                     "text": {
+        #                         "content": "🔗 링크: ",
+        #                     }
+        #                 },
+        #                 {
+        #                     "type": "text",
+        #                     "text": {
+        #                         "content": url,
+        #                         "link": {"url": url}
+        #                     }
+        #                 }
+        #             ]
+        #         }
+        #     })
+        
+        response = get_notion_client().blocks.children.append(
+            block_id=block_id,
+            children=[
+                {
+                    "type": "paragraph",
+                    "paragraph": {
+                        "rich_text": [
+                            {
+                                "type": "text",
+                                "text": {
+                                    "content": "🔗 링크: ",
+                                }
+                            },
+                            {
+                                "type": "text",
+                                "text": {
+                                    "content": url,
+                                    "link": {"url": url}
+                                }
+                            }
+                        ]
+                    }
+                },   
+                {
+                    "type": "toggle",
+                    "toggle": {
+                        "rich_text": [
+                            {
+                                "type": "text",
+                                "text": {
+                                    "content": f"🤖 {toggle_title}"
+                                }
+                            }
+                        ],
+                        "color": "gray_background",
+                        "children": notion_blocks
+                    }
+                }
+            ]
+        )
+        return {
+            "success": True,
+            "block_id": response.get("id"),
+            "message": "완료 메시지가 성공적으로 추가되었습니다."
+        }
+        
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "message": f"완료 메시지 추가 중 오류가 발생했습니다: {str(e)}"
+        }

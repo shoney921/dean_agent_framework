@@ -303,11 +303,11 @@ class BatchService:
             # AI 처리 결과를 Notion에 추가
             ai_summary = result.get('ai_result', 'AI 처리 완료')
             url = result.get('url', '')
-            completion_message = f"{todo.content} 투두 처리 결과:\n{ai_summary}\n{url}"
+            toggle_title = f"{todo.content} : 처리 결과 보기"
             
             try:
                 # append_result = append_completion_message(todo.block_id, completion_message)
-                append_result = append_completion_message_with_toggle(todo.block_id, completion_message)
+                append_result = append_completion_message_with_toggle(todo.block_id, toggle_title, url, ai_summary)
                 
                 if append_result.get('success'):
                     self.logger.info(f"Notion에 AI 처리 결과 추가 성공: {todo.block_id}")

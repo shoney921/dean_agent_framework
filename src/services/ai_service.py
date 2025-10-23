@@ -51,9 +51,9 @@ class AIService:
         self.team = create_team(
             [
                 self.web_search_agent, 
-                self.google_search_agent, 
-                self.data_analyst_agent, 
-                # self.analysis_agent, 
+                # self.google_search_agent, 
+                # self.data_analyst_agent, 
+                self.analysis_agent, 
                 # self.insight_agent, 
                 # self.devil_advocate_analyst_agent
             ],
@@ -75,7 +75,7 @@ class AIService:
             self.run_repo.finish(run.id, status="completed")
             
             # AI 처리 결과를 요약해서 반환 (너무 길면 잘라내기)
-            summary_result = ai_result[:200] + "..." if len(ai_result) > 200 else ai_result
+            summary_result = ai_result
             
             return {
                 "success": True, 
@@ -93,6 +93,15 @@ class AIService:
                 "ai_result": "작업이 타임아웃으로 인해 중단되었습니다.",
                 "url": self.generate_run_detail_url(run.id),
                 "full_result": "타임아웃 발생"
+            }
+        except asyncio.CancelledError:
+            self.run_repo.finish(run.id, status="cancelled")
+            return {
+                "success": False,
+                "message": f"투두 '{todo.content}' 처리가 취소되었습니다.",
+                "ai_result": "작업이 취소되었습니다.",
+                "url": self.generate_run_detail_url(run.id),
+                "full_result": "작업 취소됨"
             }
         except Exception as e:
             self.run_repo.finish(run.id, status="error")
