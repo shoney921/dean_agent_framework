@@ -37,3 +37,8 @@ pandas==2.3.3
 
 # 스케줄러
 APScheduler==3.11.0
+
+# LangChain 관련 패키지
+langchain==0.3.7
+langchain-google-genai==2.0.4
+langchain-community==0.3.7
