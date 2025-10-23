@@ -1063,52 +1063,32 @@ def append_completion_message_with_toggle(block_id: str, toggle_title: str, url:
         # 마크다운을 Notion 블록으로 변환
         notion_blocks = parse_markdown_to_notion_blocks(completion_text)
         
-        # # URL이 있으면 링크 블록 추가
-        # if url:
-        #     notion_blocks.append({
-        #         "type": "paragraph",
-        #         "paragraph": {
-        #             "rich_text": [
-        #                 {
-        #                     "type": "text",
-        #                     "text": {
-        #                         "content": "🔗 링크: ",
-        #                     }
-        #                 },
-        #                 {
-        #                     "type": "text",
-        #                     "text": {
-        #                         "content": url,
-        #                         "link": {"url": url}
-        #                     }
-        #                 }
-        #             ]
-        #         }
-        #     })
+        # URL이 있으면 링크 블록 추가
+        if url:
+            notion_blocks.append({
+                "type": "paragraph",
+                "paragraph": {
+                    "rich_text": [
+                        {
+                            "type": "text",
+                            "text": {
+                                "content": "🔗 링크: ",
+                            }
+                        },
+                        {
+                            "type": "text",
+                            "text": {
+                                "content": url,
+                                "link": {"url": url}
+                            }
+                        }
+                    ]
+                }
+            })
         
         response = get_notion_client().blocks.children.append(
             block_id=block_id,
             children=[
-                {
-                    "type": "paragraph",
-                    "paragraph": {
-                        "rich_text": [
-                            {
-                                "type": "text",
-                                "text": {
-                                    "content": "🔗 링크: ",
-                                }
-                            },
-                            {
-                                "type": "text",
-                                "text": {
-                                    "content": url,
-                                    "link": {"url": url}
-                                }
-                            }
-                        ]
-                    }
-                },   
                 {
                     "type": "toggle",
                     "toggle": {
