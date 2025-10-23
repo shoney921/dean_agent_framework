@@ -86,3 +86,21 @@ class BackendAPIClient:
         resp = self.session.put(f"{self.notion_base_url}/pages/{notion_page_id}/batch-status", params=params, timeout=15)
         resp.raise_for_status()
         return resp.json()
+
+    def run_batch_management(self, notion_page_id: str) -> Dict[str, Any]:
+        """배치를 비동기로 실행합니다. 즉시 응답을 반환합니다."""
+        resp = self.session.post(f"{self.notion_base_url}/pages/{notion_page_id}/batch-run", timeout=5)
+        resp.raise_for_status()
+        return resp.json()
+
+    def stop_batch_management(self, notion_page_id: str) -> Dict[str, Any]:
+        """배치를 비동기로 중지합니다. 즉시 응답을 반환합니다."""
+        resp = self.session.post(f"{self.notion_base_url}/pages/{notion_page_id}/batch-stop", timeout=5)
+        resp.raise_for_status()
+        return resp.json()
+
+    def get_batch_status(self, notion_page_id: str) -> Dict[str, Any]:
+        """배치 상태를 확인합니다."""
+        resp = self.session.get(f"{self.notion_base_url}/pages/{notion_page_id}/batch-status", timeout=5)
+        resp.raise_for_status()
+        return resp.json()

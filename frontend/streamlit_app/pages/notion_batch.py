@@ -87,9 +87,9 @@ def show_registered_pages(client: BackendAPIClient):
             with col3:
                 if st.button(f'{batch_status}', key=f"execute_{page_id}"):
                     if batch_status == "running":
-                        client.update_batch_status(page_id, "idle")
+                        client.stop_batch_management(page_id)
                     else:
-                        client.update_batch_status(page_id, "running")
+                        client.run_batch_management(page_id)
                     st.rerun()
 
             for child in sorted(children_map.get(page_id, []), key=lambda x: x.get('title', '')):

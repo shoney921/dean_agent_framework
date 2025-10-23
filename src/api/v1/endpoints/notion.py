@@ -2,7 +2,7 @@
 Notion 관련 API 엔드포인트
 """
 
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, Query, Path
 from sqlalchemy.orm import Session
 import re
@@ -193,7 +193,6 @@ def get_page_todos_from_db(
     notion_service = NotionService(db)
     return notion_service.get_page_todos_from_db(notion_page_id)
 
-
 @router.put("/pages/{notion_page_id}/active-status")
 def update_page_active_status(
     notion_page_id: str = Path(..., description="Notion 페이지 ID (UUID 형식)"),
@@ -219,22 +218,6 @@ def update_page_active_status(
     
     return result
 
-
-@router.get("/pages/{notion_page_id}/batch-status", response_model=NotionBatchStatusRead | None)
-def get_batch_status(
-    notion_page_id: str = Path(..., description="Notion 페이지 ID (UUID 형식)"),
-    db: Session = Depends(get_db)
-):
-    """
-    특정 페이지의 배치 상태를 조회합니다.
-    """
-    notion_service = NotionService(db)
-    result = notion_service.get_batch_status(notion_page_id)
-    if not result["success"]:
-        raise HTTPException(status_code=400, detail=result["message"])
-    return result.get("status")
-
-
 @router.put("/pages/{notion_page_id}/batch-status", response_model=NotionBatchStatusRead)
 def update_batch_status(
     notion_page_id: str = Path(..., description="Notion 페이지 ID (UUID 형식)"),
@@ -251,3 +234,56 @@ def update_batch_status(
     if not result["success"]:
         raise HTTPException(status_code=400, detail=result["message"])
     return result["status"]
+
+
+@router.post("/pages/{notion_page_id}/batch-run", response_model=Dict[str, Any])
+def run_batch_management(notion_page_id: str = Path(..., description="Notion 페이지 ID (UUID 형식)"), db: Session = Depends(get_db)):
+    """
+    배치를 비동기로 실행합니다. 즉시 응답을 반환합니다.
+    """
+    batch_service = BatchService(db)
+    result = batch_service.start_batch(notion_page_id)
+    print(result)
+    if not result["success"]:
+        raise HTTPException(status_code=400, detail=result["message"])
+    
+    # 즉시 응답 반환 (배치 상태 정보 포함)
+    return {
+        "success": True,
+        "message": "배치가 백그라운드에서 시작되었습니다.",
+        "notion_page_id": notion_page_id,
+        "status": "running",
+        "start_time": result.get("start_time"),
+        "end_time": result.get("end_time")
+    }
+
+
+@router.post("/pages/{notion_page_id}/batch-stop", response_model=Dict[str, Any])
+def stop_batch_management(notion_page_id: str = Path(..., description="Notion 페이지 ID (UUID 형식)"), db: Session = Depends(get_db)):
+    """
+    배치를 비동기로 중지합니다. 즉시 응답을 반환합니다.
+    """
+    batch_service = BatchService(db)
+    result = batch_service.stop_batch(notion_page_id)
+    print(result)
+    if not result["success"]:
+        raise HTTPException(status_code=400, detail=result["message"])
+    
+    # 즉시 응답 반환 (배치 상태 정보 포함)
+    return {
+        "success": True,
+        "message": "배치가 백그라운드에서 중지되었습니다.",
+        "notion_page_id": notion_page_id,
+        "status": "idle",
+        "end_time": result.get("end_time")
+    }
+
+
+@router.get("/pages/{notion_page_id}/batch-status", response_model=Dict[str, Any])
+def get_batch_status(notion_page_id: str = Path(..., description="Notion 페이지 ID (UUID 형식)"), db: Session = Depends(get_db)):
+    """
+    배치 상태를 확인합니다.
+    """
+    batch_service = BatchService(db)
+    status = batch_service.get_batch_status(notion_page_id)
+    return status
