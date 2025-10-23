@@ -27,7 +27,7 @@ def create_web_search_agent(model_client: OpenAIChatCompletionClient) -> Assista
     """
     return AssistantAgent(
         "WebSearchAgent",
-        description="웹 정보를 검색하는 에이전트입니다.",
+        description="Tavily API를 사용하여 웹 검색을 수행하는 에이전트입니다.",
         handoffs=["GoogleSearchAgent"],
         tools=[search_web_tool],
         model_client=model_client,
@@ -99,7 +99,7 @@ def create_google_search_agent(model_client: OpenAIChatCompletionClient) -> Assi
     """
     google_search_tool = FunctionTool(
         google_search,
-        description="Google에서 정보를 검색하고, 스니펫과 본문 내용이 포함된 결과를 반환합니다",
+        description="Google Custom Search API를 사용하여 웹 검색을 수행하는 도구입니다.",
         name="google_search"
     )
     return AssistantAgent(
@@ -108,7 +108,7 @@ def create_google_search_agent(model_client: OpenAIChatCompletionClient) -> Assi
         handoffs=["WebSearchAgent"],
         tools=[google_search_tool],
         model_client=model_client,
-        system_message="You are a helpful AI assistant. Solve tasks using your tools. You can use the WebSearchAgent to search the web for information.",
+        system_message="당신은 구글 웹 검색 에이전트입니다. 요청된 정보를 찾기 위해 google_search_tool사용하세요. 검색 결과를 제공한 후, 계산이 필요한 경우 DataAnalystAgent에게 문의하세요. 한 번에 하나의 검색만 수행하세요.",
     )
 
 async def test_web_search_agent():
